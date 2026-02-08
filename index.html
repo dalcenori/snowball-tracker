@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ursula — Bills + Snowball Tracker (v2 Paycheck Mode)</title>
+  <meta name="theme-color" content="#0b0f19" />
+  <style>
+    :root{
+      --bg:#0b0f19; --card:#121a2a; --muted:#a8b3cf; --text:#eef2ff;
+      --accent:#7c5cff; --good:#33d17a; --warn:#ffb020; --bad:#ff4d6d;
+      --line:#22304d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 700px at 20% 0%, #1a2450 0%, var(--bg) 50%);
+      color:var(--text);
+    }
+    header{
+      padding:18px 16px 10px;
+      position:sticky; top:0; backdrop-filter: blur(10px);
+      background: linear-gradient(to bottom, rgba(11,15,25,.92), rgba(11,15,25,.55));
+      border-bottom:1px solid rgba(34,48,77,.55);
+      z-index:10;
+    }
+    h1{margin:0; font-size:18px; letter-spacing:.2px}
+    .sub{margin:6px 0 0; color:var(--muted); font-size:12.5px}
+    main{padding:14px 16px 84px; max-width:1200px; margin:0 auto}
+    .grid{display:grid; gap:12px}
+    @media(min-width:980px){ .grid.cols2{grid-template-columns: 1.2fr .8fr} }
+    .card{
+      background: linear-gradient(180deg, rgba(18,26,42,.92), rgba(18,26,42,.78));
+      border:1px solid rgba(34,48,77,.7);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .row.nowrap{flex-wrap:nowrap}
+    .spacer{flex:1}
+    label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
+    input, select{
+      width:100%; padding:10px 10px; border-radius:12px;
+      border:1px solid rgba(34,48,77,.85); background:#0c1324; color:var(--text);
+      outline:none;
+    }
+    input:focus, select:focus{border-color: rgba(124,92,255,.95); box-shadow:0 0 0 3px rgba(124,92,255,.2)}
+    .btn{
+      border:1px solid rgba(124,92,255,.9);
+      background: linear-gradient(180deg, rgba(124,92,255,.95), rgba(124,92,255,.75));
+      color:white; padding:10px 12px; border-radius:12px;
+      cursor:pointer; font-weight:800;
+    }
+    .btn.ghost{
+      background: transparent; border-color: rgba(34,48,77,.95); color: var(--text);
+    }
+    .btn.danger{
+      background: linear-gradient(180deg, rgba(255,77,109,.95), rgba(255,77,109,.75));
+      border-color: rgba(255,77,109,.9);
+    }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(34,48,77,.9);
+      color:var(--muted);
+    }
+    .pill.good{color:#b9ffe0; border-color: rgba(51,209,122,.6); background: rgba(51,209,122,.08)}
+    .pill.warn{color:#ffe0a3; border-color: rgba(255,176,32,.6); background: rgba(255,176,32,.08)}
+    .pill.bad{color:#ffd0d7; border-color: rgba(255,77,109,.6); background: rgba(255,77,109,.08)}
+    table{width:100%; border-collapse:collapse; font-size:13px}
+    th, td{padding:10px 8px; border-bottom:1px solid rgba(34,48,77,.55); vertical-align:middle}
+    th{color:var(--muted); text-align:left; font-weight:650; font-size:12px}
+    .right{text-align:right}
+    .mono{font-variant-numeric: tabular-nums; font-feature-settings:"tnum" 1}
+    .small{font-size:12px; color:var(--muted)}
+    .title{font-weight:900; letter-spacing:.2px}
+    .progress{
+      height:10px; border-radius:999px; background: rgba(34,48,77,.65); overflow:hidden; border:1px solid rgba(34,48,77,.9)
+    }
+    .bar{height:100%; width:0%; background: linear-gradient(90deg, rgba(51,209,122,.95), rgba(124,92,255,.95));}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px; color: #d9ddff; background: rgba(124,92,255,.12);
+      border: 1px solid rgba(124,92,255,.35); padding: 2px 6px; border-radius: 8px;
+    }
+    .footerbar{
+      position:fixed; left:0; right:0; bottom:0; z-index:20;
+      background: linear-gradient(to top, rgba(11,15,25,.95), rgba(11,15,25,.65));
+      border-top:1px solid rgba(34,48,77,.55);
+      padding:10px 12px;
+    }
+    .footerbar .wrap{max-width:1200px; margin:0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .hr{height:1px; background:rgba(34,48,77,.6); margin:12px 0}
+    .twoCol{display:grid; grid-template-columns:1fr; gap:10px}
+    @media(min-width:620px){ .twoCol{grid-template-columns:1fr 1fr} }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Ursula — Bills + Snowball Tracker <span class="pill">v2 Paycheck Mode</span></h1>
+  <div class="sub">Biweekly paycheck planning + snowball. Mobile-friendly. Saves on this device.</div>
+</header>
+
+<main class="grid cols2">
+  <!-- LEFT -->
+  <section class="grid">
+    <!-- SNAPSHOT -->
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="title">Monthly Snapshot</div>
+          <div class="small">Set monthly extra, buffer floor, and current cash. Paycheck mode helps you fund bills “by due date.”</div>
+        </div>
+        <div class="spacer"></div>
+        <span id="statusPill" class="pill">Ready</span>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:180px">
+          <label>Extra Snowball (monthly)</label>
+          <input id="extraPayment" type="number" step="0.01" min="0" placeholder="e.g., 600.00" />
+        </div>
+        <div style="flex:1; min-width:180px">
+          <label>Cash Buffer Floor (don’t drop below)</label>
+          <input id="bufferFloor" type="number" step="0.01" min="0" placeholder="e.g., 1500.00" />
+        </div>
+        <div style="flex:1; min-width:180px">
+          <label>Current Cash On Hand</label>
+          <input id="cashOnHand" type="number" step="0.01" min="0" placeholder="e.g., 3000.00" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1; min-width:200px">
+          <div class="small">Total Bills (monthly)</div>
+          <div id="sumBills" class="mono" style="font-size:22px; font-weight:900">$0.00</div>
+        </div>
+        <div style="flex:1; min-width:200px">
+          <div class="small">Total Debt Minimums (monthly)</div>
+          <div id="sumMins" class="mono" style="font-size:22px; font-weight:900">$0.00</div>
+        </div>
+        <div style="flex:1; min-width:200px">
+          <div class="small">Freed Monthly Cash (paid off)</div>
+          <div id="sumFreed" class="mono" style="font-size:22px; font-weight:900">$0.00</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <div class="small">Debt progress</div>
+          <div class="progress"><div id="progressBar" class="bar"></div></div>
+          <div class="small" style="margin-top:6px">
+            <span class="kbd">Tip</span> Toggle <b>Paid Off</b> to instantly see monthly cash freed.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYCHECK MODE -->
+    <div class="card">
+      <div class="row">
+        <div class="title">Paycheck Mode (biweekly)</div>
+        <div class="spacer"></div>
+        <span id="paycheckPill" class="pill">Planner</span>
+      </div>
+
+      <div class="twoCol" style="margin-top:10px">
+        <div>
+          <label>Pay Frequency</label>
+          <select id="payFrequency">
+            <option value="biweekly">Biweekly (every 14 days)</option>
+            <option value="weekly">Weekly (every 7 days)</option>
+            <option value="semimonthly">Semi-monthly (15th & last day)</option>
+          </select>
+        </div>
+        <div>
+          <label>Typical Paycheck Amount (net)</label>
+          <input id="paycheckAmount" type="number" step="0.01" min="0" placeholder="e.g., 1840.80" />
+        </div>
+        <div>
+          <label>Last Payday (date)</label>
+          <input id="lastPayday" type="date" />
+        </div>
+        <div>
+          <label>Next Payday (auto)</label>
+          <input id="nextPayday" type="date" disabled />
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div style="flex:1; min-width:240px">
+          <div class="small">Bills due before next payday (recommended set-aside)</div>
+          <div id="dueBeforeNext" class="mono" style="font-size:24px; font-weight:900">$0.00</div>
+        </div>
+        <div style="flex:1; min-width:240px">
+          <div class="small">Debt minimums “per paycheck” (est.)</div>
+          <div id="minsPerPaycheck" class="mono" style="font-size:24px; font-weight:900">$0.00</div>
+        </div>
+        <div style="flex:1; min-width:240px">
+          <div class="small">Suggested Snowball “per paycheck”</div>
+          <div id="extraPerPaycheck" class="mono" style="font-size:24px; font-weight:900">$0.00</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div style="flex:1">
+          <div class="title" style="font-size:14px">This Paycheck Plan</div>
+          <div id="payPlanText" class="small" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="small" style="margin-top:10px">
+        <span class="kbd">How it works</span> It looks at bills whose due-day falls before the next payday and recommends how much to set aside from this check.
+      </div>
+    </div>
+
+    <!-- BILLS -->
+    <div class="card">
+      <div class="row">
+        <div class="title">Bills (monthly)</div>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="addBillBtn">+ Add Bill</button>
+      </div>
+      <div class="small">Rent, utilities, subscriptions, insurance — anything predictable.</div>
+      <div style="margin-top:10px; overflow:auto">
+        <table>
+          <thead>
+          <tr>
+            <th>Bill</th>
+            <th class="right">Amount</th>
+            <th class="right">Due Day</th>
+            <th class="right">Category</th>
+            <th class="right">Action</th>
+          </tr>
+          </thead>
+          <tbody id="billsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DEBTS -->
+    <div class="card">
+      <div class="row">
+        <div class="title">Debts (snowball + tracker)</div>
+        <div class="spacer"></div>
+        <button class="btn" id="addDebtBtn">+ Add Debt</button>
+      </div>
+      <div class="small">Cards, loans, microloans, LOC. Track balance, minimum, APR. Pick a snowball target.</div>
+
+      <div class="row" style="margin-top:10px">
+        <div style="flex:1; min-width:220px">
+          <label>Snowball Strategy</label>
+          <select id="strategy">
+            <option value="snowball">Snowball (smallest balance first)</option>
+            <option value="avalanche">Avalanche (highest APR first)</option>
+            <option value="manual">Manual (you choose target)</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:220px">
+          <label>Manual Target (if Manual)</label>
+          <select id="manualTarget"></select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px; overflow:auto">
+        <table>
+          <thead>
+          <tr>
+            <th>Debt</th>
+            <th class="right">Balance</th>
+            <th class="right">APR</th>
+            <th class="right">Min</th>
+            <th class="right">Target?</th>
+            <th class="right">Paid Off</th>
+            <th class="right">Action</th>
+          </tr>
+          </thead>
+          <tbody id="debtsTbody"></tbody>
+        </table>
+      </div>
+
+      <div id="projectionBox" style="margin-top:12px" class="small"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <aside class="grid">
+    <div class="card">
+      <div class="title">This Month’s “Do Not Cross” Check</div>
+      <div class="small" style="margin-top:6px">
+        Uses: <b>Cash On Hand</b> − (Bills + Debt Mins + Extra) vs Buffer Floor.
+      </div>
+      <div style="margin-top:12px">
+        <div class="row">
+          <div style="flex:1">
+            <div class="small">Projected End-of-Month Cash</div>
+            <div id="projCash" class="mono" style="font-size:26px; font-weight:900">$0.00</div>
+          </div>
+          <div>
+            <span id="bufferPill" class="pill">Buffer</span>
+          </div>
+        </div>
+        <div class="small" style="margin-top:8px">
+          If this is below your buffer floor, reduce “Extra Snowball” for the month.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">Paycheck Safety Check</div>
+      <div class="small" style="margin-top:6px">
+        If the “This Paycheck Plan” exceeds your paycheck amount, lower snowball for this pay period or split a bill (if allowed).
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div style="flex:1">
+          <div class="small">Planned from this paycheck</div>
+          <div id="plannedFromCheck" class="mono" style="font-size:26px; font-weight:900">$0.00</div>
+        </div>
+        <div>
+          <span id="planFitPill" class="pill">Fit</span>
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">
+        <span class="kbd">Note</span> This is planning math, not a bank connection. You’re in control.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">Quick Actions</div>
+      <div class="small">Backup, move devices, reset.</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="exportBtn">Export JSON</button>
+        <button class="btn ghost" id="importBtn">Import JSON</button>
+        <button class="btn danger" id="resetBtn">Reset</button>
+      </div>
+      <div class="small" style="margin-top:10px">
+        Export lets you back up or move to a new phone. Import restores.
+      </div>
+      <input id="fileInput" type="file" accept="application/json" style="display:none" />
+    </div>
+
+    <div class="card">
+      <div class="title">How to Use (60 seconds)</div>
+      <ol class="small" style="margin:10px 0 0 18px; line-height:1.5">
+        <li>Add bills + debts.</li>
+        <li>Enter paycheck amount + last payday.</li>
+        <li>Follow “Bills due before next payday” set-aside.</li>
+        <li>Pay mins on debts; add snowball as planned.</li>
+        <li>When a debt is gone, toggle <b>Paid Off</b> → freed cash grows.</li>
+      </ol>
+      <div class="small" style="margin-top:10px">
+        <span class="kbd">NFC Tip</span> Put the GitHub Pages URL on the NFC tag.
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="footerbar">
+  <div class="wrap">
+    <span class="pill good">Local-first</span>
+    <span class="pill">Paycheck Mode</span>
+    <span class="pill warn">No logins</span>
+    <div class="spacer"></div>
+    <span class="small">v2.0 — Paycheck planning + Snowball</span>
+  </div>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => (Number(n||0)).toLocaleString(undefined, {style:"currency", currency:"USD"});
+  const clampNum = (v) => (Number.isFinite(v) ? v : 0);
+  const monthlyRate = (aprPct) => (clampNum(aprPct) / 100) / 12;
+
+  const STORAGE_KEY = "urs_snowball_tracker_v2_paycheck";
+
+  const defaultState = {
+    meta: {
+      extraPayment: 0,
+      bufferFloor: 0,
+      cashOnHand: 0,
+      strategy: "snowball",
+      manualTargetId: null,
+
+      payFrequency: "biweekly",
+      paycheckAmount: 0,
+      lastPayday: "",
+
+      // for semi-monthly settings
+      semiDay1: 15, // fixed
+      semiUseLastDay: true
+    },
+    bills: [
+      // { id, name, amount, dueDay, category }
+    ],
+    debts: [
+      // { id, name, balance, apr, min, paidOff }
+    ]
+  };
+
+  let state = loadState();
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return structuredClone(defaultState);
+      const parsed = JSON.parse(raw);
+      return {
+        meta: { ...defaultState.meta, ...(parsed.meta||{}) },
+        bills: Array.isArray(parsed.bills) ? parsed.bills : [],
+        debts: Array.isArray(parsed.debts) ? parsed.debts : []
+      };
+    } catch {
+      return structuredClone(defaultState);
+    }
+  }
+
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function uid(){
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // ---------- Dates ----------
+  function parseDateLocal(yyyy_mm_dd){
+    if(!yyyy_mm_dd) return null;
+    const [y,m,d] = yyyy_mm_dd.split("-").map(Number);
+    if(!y || !m || !d) return null;
+    return new Date(y, m-1, d, 12, 0, 0, 0); // noon local to avoid DST weirdness
+  }
+  function fmtDateInput(date){
+    if(!(date instanceof Date)) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+  function addDays(date, days){
+    const d = new Date(date.getTime());
+    d.setDate(d.getDate()+days);
+    return d;
+  }
+  function endOfMonth(date){
+    return new Date(date.getFullYear(), date.getMonth()+1, 0, 12, 0, 0, 0);
+  }
+
+  function nextPaydayFrom(lastPaydayStr, frequency){
+    const last = parseDateLocal(lastPaydayStr);
+    if(!last) return null;
+    const now = new Date();
+    now.setHours(12,0,0,0);
+
+    if(frequency === "weekly"){
+      let nxt = addDays(last, 7);
+      while(nxt < now) nxt = addDays(nxt, 7);
+      return nxt;
+    }
+    if(frequency === "biweekly"){
+      let nxt = addDays(last, 14);
+      while(nxt < now) nxt = addDays(nxt, 14);
+      return nxt;
+    }
+    // semi-monthly: 15th and last day of month.
+    // Next payday is the next occurrence of either 15th or month-end after today.
+    const y = now.getFullYear(), m = now.getMonth();
+    const fifteenth = new Date(y, m, 15, 12,0,0,0);
+    const monthEnd = endOfMonth(now);
+    monthEnd.setHours(12,0,0,0);
+
+    // If today is before 15th, next is 15th; else if before month end, next is month end; else next month 15th.
+    if(now < fifteenth) return fifteenth;
+    if(now < monthEnd) return monthEnd;
+    const nextMonth = new Date(y, m+1, 1, 12,0,0,0);
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 15, 12,0,0,0);
+  }
+
+  // ---------- Core sums ----------
+  function computeSums(){
+    const sumBills = state.bills.reduce((a,b)=> a + clampNum(b.amount), 0);
+    const activeDebts = state.debts.filter(d=>!d.paidOff);
+    const sumMins = activeDebts.reduce((a,d)=> a + clampNum(d.min), 0);
+    const sumFreed = state.debts.filter(d=>d.paidOff).reduce((a,d)=> a + clampNum(d.min), 0);
+
+    const extra = clampNum(state.meta.extraPayment);
+    const cash = clampNum(state.meta.cashOnHand);
+    const projCash = cash - (sumBills + sumMins + extra);
+
+    return {sumBills, sumMins, sumFreed, projCash};
+  }
+
+  // ---------- Target selection ----------
+  function chooseTargetId(){
+    const active = state.debts.filter(d=>!d.paidOff);
+    if(active.length===0) return null;
+
+    const strat = state.meta.strategy;
+    if(strat==="manual" && state.meta.manualTargetId){
+      const found = active.find(d=>d.id===state.meta.manualTargetId);
+      if(found) return found.id;
+    }
+    if(strat==="avalanche"){
+      active.sort((a,b)=> clampNum(b.apr)-clampNum(a.apr) || clampNum(a.balance)-clampNum(b.balance));
+      return active[0].id;
+    }
+    active.sort((a,b)=> clampNum(a.balance)-clampNum(b.balance) || clampNum(b.apr)-clampNum(a.apr));
+    return active[0].id;
+  }
+
+  function updateManualTargetOptions(){
+    const sel = $("manualTarget");
+    sel.innerHTML = "";
+    const debts = state.debts.filter(d=>!d.paidOff);
+    const opt = document.createElement("option");
+    opt.value="";
+    opt.textContent = debts.length ? "Select target…" : "No active debts";
+    sel.appendChild(opt);
+
+    debts.forEach(d=>{
+      const o = document.createElement("option");
+      o.value=d.id;
+      o.textContent = `${d.name} (${money(d.balance)})`;
+      sel.appendChild(o);
+    });
+    sel.value = state.meta.manualTargetId || "";
+  }
+
+  // ---------- Payoff projection ----------
+  function payoffProjection(){
+    const active = state.debts.filter(d=>!d.paidOff).map(d=>({...d}));
+    const extra = clampNum(state.meta.extraPayment);
+    if(active.length===0) return {months:0, text:"All debts marked paid off. 🎉"};
+
+    let months=0;
+    let total = active.reduce((a,d)=> a+clampNum(d.balance), 0);
+
+    while(total>0.01 && months<600){
+      months++;
+
+      // interest
+      active.forEach(d=>{
+        d.balance = d.balance + (d.balance * monthlyRate(d.apr));
+      });
+
+      // mins
+      active.forEach(d=>{
+        const p = Math.min(d.balance, clampNum(d.min));
+        d.balance -= p;
+      });
+
+      // remove zeros
+      for(let i=active.length-1;i>=0;i--){
+        if(active[i].balance<=0.01) active.splice(i,1);
+      }
+      if(active.length===0) break;
+
+      // choose target
+      let target;
+      if(state.meta.strategy==="avalanche"){
+        target = active.slice().sort((a,b)=> clampNum(b.apr)-clampNum(a.apr) || clampNum(a.balance)-clampNum(b.balance))[0];
+      } else if(state.meta.strategy==="manual" && state.meta.manualTargetId){
+        target = active.find(d=>d.id===state.meta.manualTargetId) || active.slice().sort((a,b)=> clampNum(a.balance)-clampNum(b.balance))[0];
+      } else {
+        target = active.slice().sort((a,b)=> clampNum(a.balance)-clampNum(b.balance) || clampNum(b.apr)-clampNum(a.apr))[0];
+      }
+
+      if(extra>0 && target){
+        const p = Math.min(target.balance, extra);
+        target.balance -= p;
+      }
+
+      for(let i=active.length-1;i>=0;i--){
+        if(active[i].balance<=0.01) active.splice(i,1);
+      }
+      total = active.reduce((a,d)=> a+clampNum(d.balance), 0);
+    }
+
+    const years = Math.floor(months/12);
+    const rem = months%12;
+    const pretty = years>0 ? `${years}y ${rem}m` : `${rem}m`;
+    return {months, text:`Estimated payoff time (mins + monthly extra): <b>${pretty}</b> (≈ ${months} months).`};
+  }
+
+  // ---------- Paycheck planner ----------
+  function paychecksPerMonth(freq){
+    if(freq==="weekly") return 4;        // rough planning
+    if(freq==="biweekly") return 2;      // rough planning (some months have 3, but this keeps it safe)
+    if(freq==="semimonthly") return 2;
+    return 2;
+  }
+
+  function billsDueBefore(nextPaydayDate){
+    // Determine which bills have dueDay that occurs on/before nextPaydayDate's day in the current month,
+    // but after today's date day. This is "what must be funded before next payday".
+    const now = new Date();
+    now.setHours(12,0,0,0);
+    if(!(nextPaydayDate instanceof Date)) return [];
+
+    const y = now.getFullYear(), m = now.getMonth();
+    const todayDay = now.getDate();
+
+    return state.bills
+      .filter(b=>{
+        const dueDay = Number(b.dueDay);
+        if(!dueDay || dueDay<1 || dueDay>31) return false;
+        const dueDate = new Date(y, m, dueDay, 12,0,0,0);
+        // If due day doesn't exist this month (e.g., 31 in Feb), JS rolls over; prevent that:
+        if(dueDate.getMonth() !== m) return false;
+        return (dueDate >= now) && (dueDate <= nextPaydayDate);
+      })
+      .sort((a,b)=> Number(a.dueDay)-Number(b.dueDay));
+  }
+
+  function paycheckPlan(){
+    const freq = state.meta.payFrequency;
+    const checkAmt = clampNum(state.meta.paycheckAmount);
+    const last = state.meta.lastPayday;
+    const next = nextPaydayFrom(last, freq);
+
+    const activeDebts = state.debts.filter(d=>!d.paidOff);
+    const sumMinsMonthly = activeDebts.reduce((a,d)=> a+clampNum(d.min), 0);
+
+    const perMonthChecks = paychecksPerMonth(freq);
+    const minsPerCheck = sumMinsMonthly / perMonthChecks;
+    const extraMonthly = clampNum(state.meta.extraPayment);
+    const extraPerCheck = extraMonthly / perMonthChecks;
+
+    // Bills due before next payday
+    const dueBills = billsDueBefore(next);
+    const dueBillsSum = dueBills.reduce((a,b)=> a+clampNum(b.amount), 0);
+
+    // Planned from this check:
+    const planned = dueBillsSum + minsPerCheck + extraPerCheck;
+
+    // Fit indicator:
+    const fits = checkAmt <= 0 ? true : planned <= checkAmt + 0.01;
+
+    // If it doesn't fit, suggest a reduced snowball per check (floor at 0)
+    let suggestedExtraPerCheck = extraPerCheck;
+    if(checkAmt > 0 && planned > checkAmt){
+      const over = planned - checkAmt;
+      suggestedExtraPerCheck = Math.max(0, extraPerCheck - over);
+    }
+
+    return {
+      nextPayday: next,
+      dueBills,
+      dueBillsSum,
+      minsPerCheck,
+      extraPerCheck,
+      suggestedExtraPerCheck,
+      plannedFromCheck: planned,
+      fits,
+      paycheckAmount: checkAmt
+    };
+  }
+
+  // ---------- Rendering ----------
+  function render(){
+    // meta inputs
+    $("extraPayment").value = state.meta.extraPayment ?? 0;
+    $("bufferFloor").value = state.meta.bufferFloor ?? 0;
+    $("cashOnHand").value = state.meta.cashOnHand ?? 0;
+
+    $("strategy").value = state.meta.strategy ?? "snowball";
+    updateManualTargetOptions();
+
+    // Paycheck inputs
+    $("payFrequency").value = state.meta.payFrequency ?? "biweekly";
+    $("paycheckAmount").value = state.meta.paycheckAmount ?? 0;
+    $("lastPayday").value = state.meta.lastPayday ?? "";
+
+    const {sumBills, sumMins, sumFreed, projCash} = computeSums();
+    $("sumBills").textContent = money(sumBills);
+    $("sumMins").textContent = money(sumMins);
+    $("sumFreed").textContent = money(sumFreed);
+
+    // buffer check
+    const floor = clampNum(state.meta.bufferFloor);
+    $("projCash").textContent = money(projCash);
+    const bufferPill = $("bufferPill");
+    if(floor>0 && projCash<floor){
+      bufferPill.textContent = "Below Buffer";
+      bufferPill.className = "pill bad";
+      $("statusPill").textContent = "Reduce Extra this month";
+      $("statusPill").className = "pill warn";
+    } else {
+      bufferPill.textContent = "Buffer OK";
+      bufferPill.className = "pill good";
+      $("statusPill").textContent = "On Track";
+      $("statusPill").className = "pill good";
+    }
+
+    // progress
+    const totalDebt = state.debts.reduce((a,d)=> a+clampNum(d.balance), 0);
+    const activeDebt = state.debts.filter(d=>!d.paidOff).reduce((a,d)=> a+clampNum(d.balance), 0);
+    const done = totalDebt>0 ? (1 - (activeDebt/totalDebt)) : 1;
+    $("progressBar").style.width = `${Math.max(0, Math.min(1, done))*100}%`;
+
+    // target indicator
+    const targetId = chooseTargetId();
+
+    // bills table
+    const btbody = $("billsTbody");
+    btbody.innerHTML = "";
+    state.bills.forEach(b=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(b.name || "")}</td>
+        <td class="right mono">${money(b.amount)}</td>
+        <td class="right mono">${escapeHtml(String(b.dueDay ?? ""))}</td>
+        <td class="right"><span class="pill">${escapeHtml(b.category || "—")}</span></td>
+        <td class="right">
+          <button class="btn ghost" data-act="editBill" data-id="${b.id}">Edit</button>
+          <button class="btn danger" data-act="delBill" data-id="${b.id}">Del</button>
+        </td>
+      `;
+      btbody.appendChild(tr);
+    });
+
+    // debts table
+    const dtbody = $("debtsTbody");
+    dtbody.innerHTML = "";
+    state.debts.forEach(d=>{
+      const isTarget = (!d.paidOff && d.id===targetId);
+      const badge = d.paidOff ? `<span class="pill good">Done</span>` : (isTarget ? `<span class="pill warn">Target</span>` : `<span class="pill">—</span>`);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div class="title" style="font-size:13px">${escapeHtml(d.name || "")}</div>
+          <div class="small">Interest est/mo: <span class="mono">${money(clampNum(d.balance) * monthlyRate(clampNum(d.apr)))}</span></div>
+        </td>
+        <td class="right mono">${money(d.balance)}</td>
+        <td class="right mono">${clampNum(d.apr).toFixed(2)}%</td>
+        <td class="right mono">${money(d.min)}</td>
+        <td class="right">${badge}</td>
+        <td class="right">
+          <input type="checkbox" data-act="togglePaid" data-id="${d.id}" ${d.paidOff ? "checked" : ""} />
+        </td>
+        <td class="right">
+          <button class="btn ghost" data-act="editDebt" data-id="${d.id}">Edit</button>
+          <button class="btn danger" data-act="delDebt" data-id="${d.id}">Del</button>
+        </td>
+      `;
+      dtbody.appendChild(tr);
+    });
+
+    // payoff projection
+    const proj = payoffProjection();
+    $("projectionBox").innerHTML = proj.text;
+
+    // paycheck plan
+    const plan = paycheckPlan();
+    $("nextPayday").value = plan.nextPayday ? fmtDateInput(plan.nextPayday) : "";
+
+    $("dueBeforeNext").textContent = money(plan.dueBillsSum);
+    $("minsPerPaycheck").textContent = money(plan.minsPerCheck);
+    $("extraPerPaycheck").textContent = money(plan.extraPerCheck);
+
+    const planText = [];
+    if(!plan.nextPayday){
+      planText.push(`Set <b>Last Payday</b> to generate your plan.`);
+    } else {
+      planText.push(`Next payday: <b>${plan.nextPayday.toLocaleDateString()}</b>`);
+      if(plan.dueBills.length){
+        planText.push(`<div class="hr"></div>`);
+        planText.push(`<b>Fund these bills from this check (due before next payday):</b>`);
+        planText.push(`<ul style="margin:8px 0 0 18px; line-height:1.45">` +
+          plan.dueBills.map(b=>`<li><span class="mono">${
+            String(b.dueDay).padStart(2,"0")
+          }</span> — ${escapeHtml(b.name)}: <span class="mono">${money(b.amount)}</span></li>`).join("") +
+          `</ul>`);
+      } else {
+        planText.push(`<b>No bills due before next payday.</b>`);
+      }
+
+      planText.push(`<div class="hr"></div>`);
+      planText.push(`Debt minimums set-aside (this check): <b class="mono">${money(plan.minsPerCheck)}</b>`);
+      planText.push(`<br>Snowball set-aside (this check): <b class="mono">${money(plan.extraPerCheck)}</b>`);
+
+      const planned = plan.plannedFromCheck;
+      planText.push(`<div class="hr"></div>`);
+      planText.push(`Total planned from this check: <b class="mono">${money(planned)}</b>`);
+
+      if(plan.paycheckAmount>0 && !plan.fits){
+        planText.push(`<br><span class="pill bad">Too tight</span> This plan exceeds your paycheck.`);
+        planText.push(`<br>Suggested snowball for this check: <b class="mono">${money(plan.suggestedExtraPerCheck)}</b>`);
+        planText.push(`<br><span class="small">Keep bills + minimums safe; adjust snowball temporarily.</span>`);
+      } else if(plan.paycheckAmount>0 && plan.fits){
+        planText.push(`<br><span class="pill good">Fits</span> You’re good with this plan.`);
+      }
+    }
+    $("payPlanText").innerHTML = planText.join("");
+
+    // Paycheck safety check card
+    $("plannedFromCheck").textContent = money(plan.plannedFromCheck);
+    const fitPill = $("planFitPill");
+    const pAmt = plan.paycheckAmount;
+    if(pAmt>0 && plan.plannedFromCheck > pAmt + 0.01){
+      fitPill.textContent = "Over";
+      fitPill.className = "pill bad";
+      $("paycheckPill").textContent = "Adjust snowball";
+      $("paycheckPill").className = "pill warn";
+    } else {
+      fitPill.textContent = "Fit";
+      fitPill.className = "pill good";
+      $("paycheckPill").textContent = "Plan OK";
+      $("paycheckPill").className = "pill good";
+    }
+
+    saveState();
+  }
+
+  // ---------- Add/Edit prompts ----------
+  function addOrEditBill(existing){
+    const name = prompt("Bill name:", existing?.name ?? "");
+    if(name===null) return;
+    const amount = prompt("Monthly amount (e.g., 1800):", existing?.amount ?? "");
+    if(amount===null) return;
+    const dueDay = prompt("Due day of month (1-31):", existing?.dueDay ?? "");
+    if(dueDay===null) return;
+    const category = prompt("Category (Rent/Utilities/Insurance/Subs/etc):", existing?.category ?? "");
+    if(category===null) return;
+
+    const bill = {
+      id: existing?.id ?? uid(),
+      name: name.trim(),
+      amount: Number(amount) || 0,
+      dueDay: dueDay.trim() ? (Number(dueDay)||"") : "",
+      category: category.trim() || "—"
+    };
+
+    if(existing){
+      const idx = state.bills.findIndex(b=>b.id===existing.id);
+      if(idx>=0) state.bills[idx]=bill;
+    } else {
+      state.bills.push(bill);
+    }
+    render();
+  }
+
+  function addOrEditDebt(existing){
+    const name = prompt("Debt name (e.g., Visa / Microloan / LOC):", existing?.name ?? "");
+    if(name===null) return;
+    const balance = prompt("Current balance:", existing?.balance ?? "");
+    if(balance===null) return;
+    const apr = prompt("APR % (e.g., 24.99). Use 0 if none:", existing?.apr ?? "");
+    if(apr===null) return;
+    const min = prompt("Monthly minimum payment:", existing?.min ?? "");
+    if(min===null) return;
+
+    const debt = {
+      id: existing?.id ?? uid(),
+      name: name.trim(),
+      balance: Number(balance) || 0,
+      apr: Number(apr) || 0,
+      min: Number(min) || 0,
+      paidOff: existing?.paidOff ?? false
+    };
+
+    if(existing){
+      const idx = state.debts.findIndex(d=>d.id===existing.id);
+      if(idx>=0) state.debts[idx]=debt;
+    } else {
+      state.debts.push(debt);
+      if(!state.meta.manualTargetId) state.meta.manualTargetId = debt.id;
+    }
+    render();
+  }
+
+  // ---------- Events ----------
+  $("addBillBtn").addEventListener("click", ()=> addOrEditBill(null));
+  $("addDebtBtn").addEventListener("click", ()=> addOrEditDebt(null));
+
+  $("extraPayment").addEventListener("input", e=>{ state.meta.extraPayment = Number(e.target.value)||0; render(); });
+  $("bufferFloor").addEventListener("input", e=>{ state.meta.bufferFloor = Number(e.target.value)||0; render(); });
+  $("cashOnHand").addEventListener("input", e=>{ state.meta.cashOnHand = Number(e.target.value)||0; render(); });
+
+  $("strategy").addEventListener("change", e=>{ state.meta.strategy = e.target.value; render(); });
+  $("manualTarget").addEventListener("change", e=>{ state.meta.manualTargetId = e.target.value || null; render(); });
+
+  // Paycheck mode
+  $("payFrequency").addEventListener("change", e=>{ state.meta.payFrequency = e.target.value; render(); });
+  $("paycheckAmount").addEventListener("input", e=>{ state.meta.paycheckAmount = Number(e.target.value)||0; render(); });
+  $("lastPayday").addEventListener("change", e=>{ state.meta.lastPayday = e.target.value || ""; render(); });
+
+  document.addEventListener("click", (e)=>{
+    const btn = e.target.closest("[data-act]");
+    if(!btn) return;
+    const act = btn.dataset.act;
+    const id = btn.dataset.id;
+
+    if(act==="delBill"){
+      state.bills = state.bills.filter(b=>b.id!==id);
+      render();
+    }
+    if(act==="editBill"){
+      const b = state.bills.find(x=>x.id===id);
+      if(b) addOrEditBill(b);
+    }
+    if(act==="delDebt"){
+      state.debts = state.debts.filter(d=>d.id!==id);
+      if(state.meta.manualTargetId===id) state.meta.manualTargetId = null;
+      render();
+    }
+    if(act==="editDebt"){
+      const d = state.debts.find(x=>x.id===id);
+      if(d) addOrEditDebt(d);
+    }
+  });
+
+  document.addEventListener("change", (e)=>{
+    const t = e.target;
+    if(t && t.matches('input[type="checkbox"][data-act="togglePaid"]')){
+      const id = t.dataset.id;
+      const d = state.debts.find(x=>x.id===id);
+      if(d) d.paidOff = !!t.checked;
+      render();
+    }
+  });
+
+  // Export / Import / Reset
+  $("exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ursula-snowball-tracker-v2-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  $("importBtn").addEventListener("click", ()=> $("fileInput").click());
+  $("fileInput").addEventListener("change", async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      state = {
+        meta: { ...defaultState.meta, ...(parsed.meta||{}) },
+        bills: Array.isArray(parsed.bills) ? parsed.bills : [],
+        debts: Array.isArray(parsed.debts) ? parsed.debts : []
+      };
+      saveState();
+      render();
+      alert("Import complete.");
+    } catch {
+      alert("Import failed. Use an exported JSON backup.");
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  $("resetBtn").addEventListener("click", ()=>{
+    if(!confirm("Reset all tracker data on this device? This cannot be undone.")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = structuredClone(defaultState);
+    render();
+  });
+
+  // Initial render
+  render();
+</script>
+</body>
+</html>
