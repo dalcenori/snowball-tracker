@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Autopilot Bills + Snowball Tracker (V3.2)</title>
+  <title>Autopilot Bills + Snowball Tracker (V3.2 — What if?)</title>
   <meta name="theme-color" content="#0b0f19" />
   <style>
     :root{
@@ -24,9 +24,9 @@
       border-bottom:1px solid rgba(34,48,77,.55);
       z-index:10;
     }
-    h1{margin:0; font-size:18px; letter-spacing:.2px}
+    h1{margin:0; font-size:18px; letter-spacing:.2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
     .sub{margin:6px 0 0; color:var(--muted); font-size:12.5px}
-    main{padding:14px 16px 86px; max-width:1200px; margin:0 auto}
+    main{padding:14px 16px 96px; max-width:1200px; margin:0 auto}
     .grid{display:grid; gap:12px}
     @media(min-width:980px){ .grid.cols2{grid-template-columns: 1.15fr .85fr} }
     .card{
@@ -52,9 +52,9 @@
       cursor:pointer; font-weight:900;
     }
     .btn.sm{padding:7px 10px; font-size:12px; border-radius:10px}
-    .btn.xs{padding:6px 8px; font-size:11px; border-radius:10px}
     .btn.ghost{background: transparent; border-color: rgba(34,48,77,.95); color: var(--text)}
     .btn.danger{background: linear-gradient(180deg, rgba(255,77,109,.95), rgba(255,77,109,.75)); border-color: rgba(255,77,109,.9)}
+    .btn.good{background: linear-gradient(180deg, rgba(51,209,122,.95), rgba(51,209,122,.75)); border-color: rgba(51,209,122,.9)}
     .pill{
       font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(34,48,77,.9);
       color:var(--muted);
@@ -62,6 +62,7 @@
     .pill.good{color:#b9ffe0; border-color: rgba(51,209,122,.6); background: rgba(51,209,122,.08)}
     .pill.warn{color:#ffe0a3; border-color: rgba(255,176,32,.6); background: rgba(255,176,32,.08)}
     .pill.bad{color:#ffd0d7; border-color: rgba(255,77,109,.6); background: rgba(255,77,109,.08)}
+    .pill.purple{color:#e5dcff; border-color: rgba(124,92,255,.75); background: rgba(124,92,255,.10)}
     .mono{font-variant-numeric: tabular-nums; font-feature-settings:"tnum" 1}
     .small{font-size:12px; color:var(--muted)}
     .title{font-weight:900; letter-spacing:.2px}
@@ -84,21 +85,52 @@
     .twoCol{display:grid; grid-template-columns:1fr; gap:10px}
     @media(min-width:620px){ .twoCol{grid-template-columns:1fr 1fr} }
     .chk{transform: scale(1.1);}
-    .debtNote{font-size:11.5px; color: var(--muted); margin-top:4px; line-height:1.35}
-    .simBar{
-      display:none;
-      margin-top:10px;
-      padding:10px;
+    .mini{
+      display:block; margin-top:4px; font-size:11px; color:var(--muted); line-height:1.35;
+    }
+    .badgeSim{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:14px;
+      border:1px solid rgba(124,92,255,.7);
+      background: rgba(124,92,255,.10);
+      color:#efeaff;
+      font-weight:900; font-size:12px;
+    }
+    .deltaPos{color:#b9ffe0}
+    .deltaNeg{color:#ffd0d7}
+    .snapGrid{
+      display:grid; grid-template-columns:1fr; gap:10px;
+    }
+    @media(min-width:760px){ .snapGrid{grid-template-columns:1fr 1fr} }
+    .snapBox{
+      border:1px solid rgba(34,48,77,.7);
       border-radius:14px;
-      border:1px solid rgba(255,176,32,.55);
-      background: rgba(255,176,32,.07);
+      padding:12px;
+      background: rgba(12,19,36,.45);
+    }
+    .snapHdr{display:flex; align-items:center; gap:8px}
+    .snapHdr b{font-size:13px}
+    .snapRow{display:flex; justify-content:space-between; gap:10px; margin-top:8px}
+    .snapRow .k{color:var(--muted); font-size:12px}
+    .snapRow .v{font-weight:900}
+    .simBanner{
+      margin-top:10px;
+      border:1px solid rgba(124,92,255,.65);
+      border-radius:14px;
+      padding:10px;
+      background: rgba(124,92,255,.10);
     }
   </style>
 </head>
 <body>
 <header>
-  <h1>Autopilot Bills + Snowball Tracker <span class="pill">V3.2</span></h1>
-  <div class="sub">Unified timeline + Split bills + Quick Pay + Futurecasting + Simulation. One-time setup → open anytime → “Current Snapshot”.</div>
+  <h1>
+    Autopilot Bills + Snowball Tracker <span class="pill">V3.2</span>
+    <span id="modePill" class="pill">Reality</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="whatIfBtn">What if?</button>
+  </h1>
+  <div class="sub">Reality stays true. <b>What if?</b> lets you tinker safely side-by-side — then Apply if you choose.</div>
 </header>
 
 <main class="grid cols2">
@@ -137,54 +169,64 @@
             <option value="0.6">60%</option>
             <option value="0.5">50% (default)</option>
           </select>
-          <div class="small">This affects <b>Committed before next payday</b> + <b>Safe-to-spend</b>, not your actual bill amount.</div>
+          <div class="small">Affects <b>Committed before next payday</b> + <b>Safe-to-spend</b>, not your actual bill amount.</div>
         </div>
         <div>
           <label>Futurecasting Horizon</label>
-          <select id="horizon">
-            <option value="0">Current (to End of Month)</option>
+          <select id="horizonMonths">
             <option value="1">+1 month</option>
-            <option value="3">+3 months</option>
+            <option value="2">+2 months</option>
+            <option value="3" selected>+3 months</option>
+            <option value="4">+4 months</option>
             <option value="6">+6 months</option>
           </select>
-          <div class="small">Read-only projection. Does NOT change your saved balances.</div>
+          <div class="small">Horizon affects projections in both Reality + What if?</div>
         </div>
       </div>
 
-      <div class="twoCol" style="margin-top:10px">
-        <div>
-          <div class="small">Safe-to-Spend NOW</div>
-          <div id="safeToSpend" class="mono" style="font-size:26px; font-weight:900">$0.00</div>
-          <div class="small">Cash − Buffer − (Committed before next payday)</div>
-        </div>
-        <div>
-          <div class="small">Committed before next payday</div>
-          <div id="committedBeforeNext" class="mono" style="font-size:26px; font-weight:900">$0.00</div>
-          <div class="small">Uses Split % for bills marked “Split Allowed”.</div>
-        </div>
-      </div>
-
-      <div class="twoCol" style="margin-top:10px">
-        <div>
-          <div class="small">Projected Cash at Next Payday</div>
-          <div id="projAtNextPay" class="mono" style="font-size:24px; font-weight:900">$0.00</div>
-        </div>
-        <div>
-          <div class="small">Projected Cash at Horizon End</div>
-          <div id="projHorizon" class="mono" style="font-size:24px; font-weight:900">$0.00</div>
-        </div>
-      </div>
-
-      <div id="simBar" class="simBar">
+      <div id="simControls" class="simBanner" style="display:none">
         <div class="row">
-          <div style="flex:1">
-            <div class="title" style="font-size:13px">Simulation Mode</div>
-            <div id="simLabel" class="small" style="margin-top:4px">—</div>
-          </div>
-          <button class="btn ghost sm" id="exitSimBtn">Exit Simulation</button>
+          <div class="badgeSim">🟣 What if? mode is ON</div>
+          <div class="spacer"></div>
+          <button class="btn good sm" id="applySimBtn">Apply to Reality</button>
+          <button class="btn ghost sm" id="resetSimBtn">Reset What if?</button>
+          <button class="btn danger sm" id="exitSimBtn">Exit What if?</button>
         </div>
         <div class="small" style="margin-top:8px; line-height:1.5">
-          Simulation is read-only. Nothing is saved unless you actually Quick Pay / add adjustments.
+          Changes here are sandboxed. Reality stays put until you hit <b>Apply to Reality</b>.
+        </div>
+      </div>
+
+      <!-- Side-by-side snapshot -->
+      <div class="snapGrid" style="margin-top:12px">
+        <div class="snapBox">
+          <div class="snapHdr">
+            <b>Reality</b> <span class="pill" style="padding:4px 8px">Anchored</span>
+          </div>
+          <div class="snapRow"><span class="k">Safe-to-Spend NOW</span><span id="r_safe" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Committed → Next Payday</span><span id="r_committed" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Proj. @ Next Payday</span><span id="r_nextpay" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Proj. @ Horizon End</span><span id="r_horizon" class="v mono">$0.00</span></div>
+        </div>
+
+        <div class="snapBox">
+          <div class="snapHdr">
+            <b>What if?</b> <span class="pill purple" style="padding:4px 8px">Sandbox</span>
+          </div>
+          <div class="snapRow"><span class="k">Safe-to-Spend NOW</span><span id="s_safe" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Committed → Next Payday</span><span id="s_committed" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Proj. @ Next Payday</span><span id="s_nextpay" class="v mono">$0.00</span></div>
+          <div class="snapRow"><span class="k">Proj. @ Horizon End</span><span id="s_horizon" class="v mono">$0.00</span></div>
+
+          <div class="hr"></div>
+          <div class="snapRow">
+            <span class="k">Delta vs Reality (Horizon)</span>
+            <span id="delta_horizon" class="v mono">$0.00</span>
+          </div>
+          <div class="snapRow">
+            <span class="k">Min Payments Freed / mo</span>
+            <span id="delta_minfreed" class="v mono">$0.00</span>
+          </div>
         </div>
       </div>
 
@@ -192,7 +234,7 @@
 
       <div class="row">
         <div style="flex:1">
-          <div class="small"><span class="kbd">Autopilot</span> Next 10 events (running balance)</div>
+          <div class="small"><span class="kbd">Autopilot</span> Next 10 events (running balance) — shows <span id="timelineModeLabel">Reality</span></div>
           <div style="margin-top:10px; overflow:auto">
             <table>
               <thead>
@@ -208,10 +250,6 @@
             </table>
           </div>
         </div>
-      </div>
-
-      <div class="small" style="margin-top:10px">
-        <span class="kbd">Quick Pay</span> logs an adjustment dated today and marks that item paid for the month (prevents double counting).
       </div>
     </div>
 
@@ -316,7 +354,7 @@
         </div>
       </div>
 
-      <div class="small" style="margin-top:8px">Interest/principal is estimated monthly: balance × APR ÷ 12. (Good enough for decision-making.)</div>
+      <div class="small" style="margin-top:8px">Debt min due day optional. If blank, assumes end-of-month.</div>
 
       <div style="margin-top:10px; overflow:auto">
         <table>
@@ -336,7 +374,6 @@
       </div>
 
       <div id="payoffBox" class="small" style="margin-top:12px"></div>
-      <div id="projPayoffBox" class="small" style="margin-top:8px"></div>
     </div>
 
     <!-- QUICK ADJUSTMENTS -->
@@ -371,9 +408,25 @@
       <div class="small" style="margin-top:8px; line-height:1.5">
         • You input bills/debts/income once.<br>
         • Daily, update only <b>Cash On Hand</b> (optional) and use <b>Quick Pay</b> when you pay something.<br>
-        • Split Allowed bills reduce “Committed before next payday” using the Split %.<br>
-        • Futurecasting and Simulation are read-only.
+        • Split Allowed bills reduce “Committed before next payday” using the Split %.
       </div>
+    </div>
+
+    <div class="card">
+      <div class="title">What if? Playground (fast)</div>
+      <div class="small" style="margin-top:8px; line-height:1.5">
+        In <b>What if?</b> mode, use the <b>SIM</b> buttons in Debts to test:<br>
+        • payoff one debt<br>
+        • throw extra at a balance<br>
+        • see min payments freed + horizon delta<br><br>
+        Then hit <b>Apply to Reality</b> if you want to commit.
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <button class="btn ghost sm" id="simOneOffBtn">+ One-time (SIM)</button>
+        <button class="btn ghost sm" id="simWorkPlanBtn">Work Plan (SIM)</button>
+      </div>
+      <div class="small" style="margin-top:10px">These only change the sandbox while What if? is ON.</div>
     </div>
 
     <div class="card">
@@ -381,18 +434,10 @@
       <div class="row" style="margin-top:10px">
         <button class="btn ghost" id="exportBtn">Export JSON</button>
         <button class="btn ghost" id="importBtn">Import JSON</button>
-        <button class="btn ghost" id="createLinkBtn">Create Link</button>
         <button class="btn danger" id="resetBtn">Reset</button>
       </div>
       <input id="fileInput" type="file" accept="application/json" style="display:none" />
-
-      <div id="linkBox" style="display:none; margin-top:10px">
-        <label>Transfer Link (open on another device)</label>
-        <input id="transferLink" type="text" readonly />
-        <div class="small" style="margin-top:6px">Tip: tap and hold to copy (or it will try to copy automatically).</div>
-      </div>
-
-      <div class="small" style="margin-top:10px">Export = backup/move device. Import restores.</div>
+      <div class="small" style="margin-top:10px">Export/Import moves your data between devices. It does <b>not</b> publish anything.</div>
     </div>
 
     <div class="card">
@@ -409,9 +454,10 @@
   <div class="wrap">
     <span class="pill good">Split Bills</span>
     <span class="pill">Quick Pay</span>
+    <span class="pill purple">What if?</span>
     <span class="pill warn">Local-only</span>
     <div class="spacer"></div>
-    <span class="small">V3.2 — “Open it, see the future, decide.”</span>
+    <span class="small">V3.2 — Reality + What if? (side-by-side)</span>
   </div>
 </div>
 
@@ -428,7 +474,7 @@
   }
   function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
 
-  // Dates (local noon avoids DST edge weirdness)
+  // Dates (local noon avoids DST weirdness)
   function todayNoon(){
     const d = new Date();
     d.setHours(12,0,0,0);
@@ -452,18 +498,20 @@
     x.setDate(x.getDate()+days);
     return x;
   }
-  function addMonths(d, months){
-    const x = new Date(d.getTime());
-    const day = x.getDate();
-    x.setDate(1);
-    x.setMonth(x.getMonth()+months);
-    const max = new Date(x.getFullYear(), x.getMonth()+1, 0).getDate();
-    x.setDate(Math.min(day, max));
-    x.setHours(12,0,0,0);
-    return x;
-  }
   function endOfMonth(d){
     return new Date(d.getFullYear(), d.getMonth()+1, 0, 12,0,0,0);
+  }
+  function addMonthsKeepDay(d, months){
+    const x = new Date(d.getTime());
+    const day = x.getDate();
+    x.setMonth(x.getMonth()+months);
+    // normalize if month overflowed
+    if(x.getDate() !== day){
+      x.setDate(0);
+      x.setHours(12,0,0,0);
+    }
+    x.setHours(12,0,0,0);
+    return x;
   }
 
   // ---------- Storage ----------
@@ -480,8 +528,7 @@
       snowballAlloc:"per_paycheck",
       snowballDay:20,
       strategy:"snowball",
-      manualTargetId:null,
-      horizonMonths:0
+      manualTargetId:null
     },
     bills:[], // {id,name,amount,dueDay,splitAllowed}
     debts:[], // {id,name,balance,apr,min,dueDay,paidOff}
@@ -489,62 +536,41 @@
     paidCycles:{} // map cycleKey -> true (prevents double-counting after Quick Pay)
   };
 
-  // ---- Simulation (NOT SAVED) ----
-  const sim = {
-    active: false,
-    mode: null, // "payoff_now" | "extra_monthly"
-    debtId: null,
-    extraMonthly: 0
-  };
-
-  // ---- Link Transfer helpers ----
-  function encodeTransfer(data){
-    return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  }
-  function decodeTransfer(str){
-    return JSON.parse(decodeURIComponent(escape(atob(str))));
-  }
-
   let state = loadState();
 
-  // ---- Auto-restore from link ----
-  (function(){
-    if(location.hash && location.hash.startsWith("#t=")){
-      try{
-        const incoming = decodeTransfer(location.hash.slice(3));
-        state = {
-          meta:{...defaultState.meta, ...(incoming.meta||{})},
-          bills:Array.isArray(incoming.bills)?incoming.bills:[],
-          debts:Array.isArray(incoming.debts)?incoming.debts:[],
-          adjustments:Array.isArray(incoming.adjustments)?incoming.adjustments:[],
-          paidCycles: (incoming.paidCycles && typeof incoming.paidCycles==="object") ? incoming.paidCycles : {}
-        };
-        saveState();
-        history.replaceState(null, "", location.pathname + location.search);
-      } catch(e){
-        alert("Transfer link invalid or corrupted.");
-        history.replaceState(null, "", location.pathname + location.search);
-      }
-    }
-  })();
+  const sim = {
+    enabled:false,
+    state:null, // deep clone of state
+  };
+
+  function deepClone(obj){
+    try{ return structuredClone(obj); } catch { return JSON.parse(JSON.stringify(obj)); }
+  }
 
   function loadState(){
     try{
       const raw = localStorage.getItem(KEY);
-      if(!raw) return structuredClone(defaultState);
+      if(!raw) return deepClone(defaultState);
       const p = JSON.parse(raw);
-      return {
-        meta:{...defaultState.meta, ...(p.meta||{})},
-        bills:Array.isArray(p.bills)?p.bills:[],
-        debts:Array.isArray(p.debts)?p.debts:[],
-        adjustments:Array.isArray(p.adjustments)?p.adjustments:[],
-        paidCycles: (p.paidCycles && typeof p.paidCycles==="object") ? p.paidCycles : {}
-      };
+      return normalizeState(p);
     } catch {
-      return structuredClone(defaultState);
+      return deepClone(defaultState);
     }
   }
+
+  function normalizeState(p){
+    return {
+      meta:{...defaultState.meta, ...(p.meta||{})},
+      bills:Array.isArray(p.bills)?p.bills:[],
+      debts:Array.isArray(p.debts)?p.debts:[],
+      adjustments:Array.isArray(p.adjustments)?p.adjustments:[],
+      paidCycles: (p.paidCycles && typeof p.paidCycles==="object") ? p.paidCycles : {}
+    };
+  }
+
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  function activeState(){ return sim.enabled ? sim.state : state; }
 
   // ---------- Paycheck schedule ----------
   function nextPaydayFrom(lastPaydayStr, freq){
@@ -572,13 +598,13 @@
     return new Date(nm.getFullYear(), nm.getMonth(), 15, 12,0,0,0);
   }
 
-  function generatePaychecks(startDate, endDate){
-    const freq = state.meta.payFrequency;
-    const amt = clamp(state.meta.paycheckAmount);
-    const last = parseDateInput(state.meta.lastPayday);
+  function generatePaychecks(st, startDate, endDate){
+    const freq = st.meta.payFrequency;
+    const amt = clamp(st.meta.paycheckAmount);
+    const last = parseDateInput(st.meta.lastPayday);
     if(!last || amt<=0) return [];
 
-    let next = nextPaydayFrom(state.meta.lastPayday, freq);
+    let next = nextPaydayFrom(st.meta.lastPayday, freq);
     if(!next) return [];
 
     const checks = [];
@@ -604,32 +630,28 @@
   }
 
   // ---------- Targets ----------
-  function chooseTargetId(snapshotDebts){
-    const list = (snapshotDebts || state.debts).filter(d=>!d.paidOff);
-    if(list.length===0) return null;
+  function chooseTargetId(st){
+    const active = st.debts.filter(d=>!d.paidOff);
+    if(active.length===0) return null;
 
-    if(sim.active && sim.debtId){
-      const found = list.find(d=>d.id===sim.debtId);
-      if(found) return found.id;
-    }
-
-    const strat = state.meta.strategy;
-    if(strat==="manual" && state.meta.manualTargetId){
-      const found = list.find(d=>d.id===state.meta.manualTargetId);
+    const strat = st.meta.strategy;
+    if(strat==="manual" && st.meta.manualTargetId){
+      const found = active.find(d=>d.id===st.meta.manualTargetId);
       if(found) return found.id;
     }
     if(strat==="avalanche"){
-      list.sort((a,b)=> clamp(b.apr)-clamp(a.apr) || clamp(a.balance)-clamp(b.balance));
-      return list[0].id;
+      active.sort((a,b)=> clamp(b.apr)-clamp(a.apr) || clamp(a.balance)-clamp(b.balance));
+      return active[0].id;
     }
-    list.sort((a,b)=> clamp(a.balance)-clamp(b.balance) || clamp(b.apr)-clamp(a.apr));
-    return list[0].id;
+    active.sort((a,b)=> clamp(a.balance)-clamp(b.balance) || clamp(b.apr)-clamp(a.apr));
+    return active[0].id;
   }
 
   function updateManualTargets(){
+    const st = activeState();
     const sel = $("manualTarget");
     sel.innerHTML = "";
-    const debts = state.debts.filter(d=>!d.paidOff);
+    const debts = st.debts.filter(d=>!d.paidOff);
     const opt = document.createElement("option");
     opt.value="";
     opt.textContent = debts.length ? "Select target…" : "No active debts";
@@ -641,7 +663,7 @@
       o.textContent = `${d.name} (${money(d.balance)})`;
       sel.appendChild(o);
     });
-    sel.value = state.meta.manualTargetId || "";
+    sel.value = st.meta.manualTargetId || "";
   }
 
   // ---------- Paid-cycle keys ----------
@@ -650,11 +672,11 @@
     const m = String(date.getMonth()+1).padStart(2,"0");
     return `${type}:${refId}:${y}-${m}`;
   }
-  function isPaid(type, refId, date){
-    return !!state.paidCycles[cycleKey(type, refId, date)];
+  function isPaid(st, type, refId, date){
+    return !!st.paidCycles[cycleKey(type, refId, date)];
   }
-  function markPaid(type, refId, date){
-    state.paidCycles[cycleKey(type, refId, date)] = true;
+  function markPaid(st, type, refId, date){
+    st.paidCycles[cycleKey(type, refId, date)] = true;
   }
 
   // ---------- Timeline event generation ----------
@@ -664,7 +686,7 @@
     return d;
   }
 
-  function generateMonthlyEvents(startDate, endDate){
+  function generateMonthlyEvents(st, startDate, endDate){
     const events = [];
     let cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 12,0,0,0);
 
@@ -672,13 +694,13 @@
       const y = cursor.getFullYear(), m = cursor.getMonth();
 
       // bills
-      state.bills.forEach(b=>{
+      st.bills.forEach(b=>{
         const dueDay = Number(b.dueDay);
         if(!dueDay) return;
         const date = billEventDateForMonth(y,m,dueDay);
         if(!date) return;
         if(date >= startDate && date <= endDate){
-          if(isPaid("bill", b.id, date)) return;
+          if(isPaid(st, "bill", b.id, date)) return;
           events.push({
             date, type:"bill", refId:b.id,
             label:`Bill: ${b.name}${b.splitAllowed ? " (Split Allowed)" : ""}`,
@@ -689,12 +711,12 @@
       });
 
       // debt minimums
-      state.debts.filter(d=>!d.paidOff).forEach(d=>{
+      st.debts.filter(d=>!d.paidOff).forEach(d=>{
         const dueDay = Number(d.dueDay);
         const date = dueDay ? billEventDateForMonth(y,m,dueDay) : endOfMonth(new Date(y,m,1,12,0,0,0));
         if(!date) return;
         if(date >= startDate && date <= endDate){
-          if(isPaid("min", d.id, date)) return;
+          if(isPaid(st, "min", d.id, date)) return;
           events.push({
             date, type:"min", refId:d.id,
             label:`Min: ${d.name}`,
@@ -707,7 +729,7 @@
     }
 
     // adjustments (one-offs)
-    state.adjustments.forEach(a=>{
+    st.adjustments.forEach(a=>{
       const date = parseDateInput(a.date);
       if(!date) return;
       if(date >= startDate && date <= endDate){
@@ -715,38 +737,26 @@
       }
     });
 
-    // simulation: payoff now (virtual adjustment)
-    if(sim.active && sim.mode==="payoff_now" && sim.debtId){
-      const d = state.debts.find(x=>x.id===sim.debtId);
-      if(d && !d.paidOff && clamp(d.balance)>0){
-        const date = todayNoon();
-        events.push({date, type:"sim", refId:"sim_payoff", label:`SIM: Payoff Now — ${d.name}`, amount:-clamp(d.balance)});
-      }
-    }
-
     return events;
   }
 
-  function generateSnowballEvents(startDate, endDate, paychecks){
+  function generateSnowballEvents(st, startDate, endDate, paychecks){
     const events = [];
-    let monthly = clamp(state.meta.snowballMonthly);
-    if(sim.active && sim.mode==="extra_monthly") monthly += clamp(sim.extraMonthly);
-
+    const monthly = clamp(st.meta.snowballMonthly);
     if(monthly <= 0) return events;
 
-    const alloc = state.meta.snowballAlloc;
+    const alloc = st.meta.snowballAlloc;
 
     if(alloc === "monthly_day"){
-      const day = Math.max(1, Math.min(31, Number(state.meta.snowballDay)||20));
-      let cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 12,0,0,0);
-      while(cursor <= endDate){
-        const date = billEventDateForMonth(cursor.getFullYear(), cursor.getMonth(), day);
-        if(date && date >= startDate && date <= endDate){
-          if(!isPaid("snowball", "monthly:"+fmtDateInput(date), date)){
-            events.push({date, type:"snowball", refId:"monthly:"+fmtDateInput(date), label:`Snowball`, amount:-monthly});
-          }
+      const day = Math.max(1, Math.min(31, Number(st.meta.snowballDay)||20));
+      const now = todayNoon();
+      const date = billEventDateForMonth(now.getFullYear(), now.getMonth(), day);
+      if(date && date >= startDate && date <= endDate){
+        if(!isPaid(st, "snowball", "monthly", date)){
+          const targetId = chooseTargetId(st);
+          const targetName = targetId ? (st.debts.find(d=>d.id===targetId)?.name || "Target") : "Target";
+          events.push({date, type:"snowball", refId:"monthly", label:`Snowball → ${targetName}`, amount:-monthly});
         }
-        cursor = addMonths(cursor, 1);
       }
       return events;
     }
@@ -755,29 +765,28 @@
     const checksInRange = paychecks.filter(p=>p.date >= startDate && p.date <= endDate);
     if(checksInRange.length === 0) return events;
 
-    // split per month: distribute monthly amount across paychecks each month
-    // Simple approach: split across all checks in range (good enough for planning)
     const per = monthly / checksInRange.length;
+    const targetId = chooseTargetId(st);
+    const targetName = targetId ? (st.debts.find(d=>d.id===targetId)?.name || "Target") : "Target";
 
     checksInRange.forEach(p=>{
-      const key = "percheck:"+fmtDateInput(p.date);
-      if(isPaid("snowball", key, p.date)) return;
-      events.push({date: p.date, type:"snowball", refId:key, label:`Snowball`, amount:-per});
+      const ref = "percheck:"+fmtDateInput(p.date);
+      if(isPaid(st, "snowball", ref, p.date)) return;
+      events.push({date: p.date, type:"snowball", refId:ref, label:`Snowball → ${targetName}`, amount:-per});
     });
 
     return events;
   }
 
-  function buildTimeline(){
+  function buildTimeline(st, horizonEndDate){
     const start = todayNoon();
-    const horizonMonths = Number(state.meta.horizonMonths||0);
-    const end = endOfMonth(addMonths(start, horizonMonths));
+    const end = horizonEndDate; // horizon drives futurecasting
 
-    const paychecks = generatePaychecks(start, end);
+    const paychecks = generatePaychecks(st, start, end);
     const paycheckEvents = paychecks.map(p=>({date:p.date, type:"income", refId:"income:"+fmtDateInput(p.date), label:p.label, amount:clamp(p.amount)}));
 
-    const monthlyEvents = generateMonthlyEvents(start, end);
-    const snowballEvents = generateSnowballEvents(start, end, paychecks);
+    const monthlyEvents = generateMonthlyEvents(st, start, end);
+    const snowballEvents = generateSnowballEvents(st, start, end, paychecks);
 
     const all = [...paycheckEvents, ...monthlyEvents, ...snowballEvents]
       .sort((a,b)=> a.date - b.date || a.type.localeCompare(b.type));
@@ -785,172 +794,19 @@
     return {start, end, paychecks, events: all};
   }
 
-  // ---------- Debt simulation engine (interest + payments) ----------
-  function cloneDebtsForProjection(){
-    return state.debts.map(d=>({
-      id:d.id,
-      name:d.name,
-      balance: clamp(d.balance),
-      apr: clamp(d.apr),
-      min: clamp(d.min),
-      dueDay: d.dueDay,
-      paidOff: !!d.paidOff
-    }));
-  }
-
-  function monthlyInterest(balance, apr){
-    if(apr<=0 || balance<=0) return 0;
-    return balance * (apr/100/12);
-  }
-
-  function monthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
-
-  function applyPaymentToDebt(debts, debtId, amount){
-    // amount is positive dollars to apply
-    const d = debts.find(x=>x.id===debtId);
-    if(!d || d.paidOff) return {applied:0, leftover:amount};
-    const before = d.balance;
-    const pay = Math.min(before, amount);
-    d.balance = Math.max(0, before - pay);
-    if(d.balance <= 0.005) { d.balance = 0; d.paidOff = true; }
-    return {applied:pay, leftover:amount - pay};
-  }
-
-  function runDebtProjection(timeline){
-    const debts = cloneDebtsForProjection();
-    const interestApplied = {}; // debtId -> {monthKey -> interest}
-    const principalApplied = {}; // debtId -> {monthKey -> principal}
-    const payoffDate = {}; // debtId -> date
-
-    debts.forEach(d=>{
-      interestApplied[d.id] = {};
-      principalApplied[d.id] = {};
-      payoffDate[d.id] = null;
-    });
-
-    // Track last-interest month for each debt (apply once per month when first touched in that month)
-    const touchedMonth = {}; // debtId -> {monthKey:true}
-    debts.forEach(d=> touchedMonth[d.id] = {});
-
-    const events = timeline.events;
-
-    for(const ev of events){
-      // Apply monthly interest when a debt gets its first debt-related event that month
-      const mk = monthKey(ev.date);
-
-      if(ev.type==="min" && ev.amount < 0){
-        const debtId = ev.refId;
-        const d = debts.find(x=>x.id===debtId);
-        if(d && !d.paidOff && !touchedMonth[debtId][mk]){
-          const intr = monthlyInterest(d.balance, d.apr);
-          if(intr>0){
-            d.balance += intr;
-            interestApplied[debtId][mk] = (interestApplied[debtId][mk]||0) + intr;
-          }
-          touchedMonth[debtId][mk] = true;
-        }
-
-        // Apply payment
-        const payAmt = Math.abs(ev.amount);
-        const before = d ? d.balance : 0;
-        const {applied} = applyPaymentToDebt(debts, debtId, payAmt);
-        const after = d ? d.balance : 0;
-
-        const principal = Math.max(0, Math.min(before, applied));
-        principalApplied[debtId][mk] = (principalApplied[debtId][mk]||0) + principal;
-
-        if(d && d.paidOff && !payoffDate[debtId]) payoffDate[debtId] = ev.date;
-      }
-
-      if(ev.type==="snowball" && ev.amount < 0){
-        // pick target based on current simulated balances
-        const targetId = chooseTargetId(debts);
-        let payAmt = Math.abs(ev.amount);
-
-        // Apply interest to target this month if not touched yet
-        if(targetId){
-          const d = debts.find(x=>x.id===targetId);
-          if(d && !d.paidOff && !touchedMonth[targetId][mk]){
-            const intr = monthlyInterest(d.balance, d.apr);
-            if(intr>0){
-              d.balance += intr;
-              interestApplied[targetId][mk] = (interestApplied[targetId][mk]||0) + intr;
-            }
-            touchedMonth[targetId][mk] = true;
-          }
-
-          const before = d ? d.balance : 0;
-          let res = applyPaymentToDebt(debts, targetId, payAmt);
-          const applied = res.applied;
-          payAmt = res.leftover;
-
-          const principal = Math.max(0, Math.min(before, applied));
-          principalApplied[targetId][mk] = (principalApplied[targetId][mk]||0) + principal;
-
-          if(d && d.paidOff && !payoffDate[targetId]) payoffDate[targetId] = ev.date;
-
-          // If leftover exists (target paid off), cascade to next targets
-          while(payAmt > 0.01){
-            const nextId = chooseTargetId(debts);
-            if(!nextId) break;
-            const nd = debts.find(x=>x.id===nextId);
-            if(nd && !nd.paidOff && !touchedMonth[nextId][mk]){
-              const intr2 = monthlyInterest(nd.balance, nd.apr);
-              if(intr2>0){
-                nd.balance += intr2;
-                interestApplied[nextId][mk] = (interestApplied[nextId][mk]||0) + intr2;
-              }
-              touchedMonth[nextId][mk] = true;
-            }
-            const before2 = nd ? nd.balance : 0;
-            const res2 = applyPaymentToDebt(debts, nextId, payAmt);
-            const applied2 = res2.applied;
-            payAmt = res2.leftover;
-
-            const principal2 = Math.max(0, Math.min(before2, applied2));
-            principalApplied[nextId][mk] = (principalApplied[nextId][mk]||0) + principal2;
-
-            if(nd && nd.paidOff && !payoffDate[nextId]) payoffDate[nextId] = ev.date;
-          }
-        }
-      }
-
-      if(ev.type==="sim" && ev.amount < 0){
-        // Simulation payoff now: apply to selected debt immediately
-        const d = state.debts.find(x=>x.id===sim.debtId);
-        const targetId = sim.debtId;
-        if(d && targetId){
-          const sd = debts.find(x=>x.id===targetId);
-          if(sd && !sd.paidOff){
-            const before = sd.balance;
-            const amt = Math.abs(ev.amount);
-            const mk2 = monthKey(ev.date);
-            const res = applyPaymentToDebt(debts, targetId, amt);
-            const applied = res.applied;
-            const principal = Math.max(0, Math.min(before, applied));
-            principalApplied[targetId][mk2] = (principalApplied[targetId][mk2]||0) + principal;
-            if(sd.paidOff && !payoffDate[targetId]) payoffDate[targetId] = ev.date;
-          }
-        }
-      }
-    }
-
-    return {debts, interestApplied, principalApplied, payoffDate};
-  }
-
   // ---------- Snapshot calculations ----------
-  function computeSnapshot(){
-    const tl = buildTimeline();
-    const cash = clamp(state.meta.cashOnHand);
-    const buffer = clamp(state.meta.bufferFloor);
-    const splitPct = clamp(state.meta.splitPct);
+  function computeSnapshot(st, horizonEndDate){
+    const {events} = buildTimeline(st, horizonEndDate);
+    const cash = clamp(st.meta.cashOnHand);
+    const buffer = clamp(st.meta.bufferFloor);
+    const splitPct = clamp(st.meta.splitPct);
 
-    const nextPay = nextPaydayFrom(state.meta.lastPayday, state.meta.payFrequency);
+    const nextPay = nextPaydayFrom(st.meta.lastPayday, st.meta.payFrequency);
 
     // committed before next payday (planning) — uses Split % for splitAllowed bills
     let committed = 0;
     if(nextPay){
-      tl.events.forEach(ev=>{
+      events.forEach(ev=>{
         if(ev.date <= nextPay && ev.amount < 0){
           let add = -ev.amount;
           if(ev.type==="bill" && ev.splitAllowed) add = add * splitPct;
@@ -963,7 +819,7 @@
 
     // Running balance (actual cashflow timeline)
     let bal = cash;
-    const running = tl.events.map(ev=>{
+    const running = events.map(ev=>{
       bal += ev.amount;
       return {...ev, balance: bal};
     });
@@ -971,56 +827,34 @@
     // Balance up to next payday date
     let balAtNextPay = cash;
     if(nextPay){
-      tl.events.forEach(ev=>{
+      events.forEach(ev=>{
         if(ev.date <= nextPay) balAtNextPay += ev.amount;
       });
     }
 
-    // Horizon end cash
-    let balH = cash;
-    tl.events.forEach(ev=>{ balH += ev.amount; });
+    // Horizon end
+    let balHorizon = cash;
+    events.forEach(ev=>{ balHorizon += ev.amount; });
 
-    // Debt projection (read-only)
-    const proj = runDebtProjection(tl);
-
-    return { timeline: tl, nextPay, committed, safe, running, balAtNextPay, balH, proj };
+    return { nextPay, committed, safe, running, balAtNextPay, balHorizon };
   }
 
-  // ---------- Interest/Principal display for current month ----------
-  function currentMonthInterestPrincipal(debt){
-    const bal = clamp(debt.balance);
-    const apr = clamp(debt.apr);
-    const min = clamp(debt.min);
-    const intr = monthlyInterest(bal, apr);
-    const prin = min - intr;
-    return {intr, prin};
+  function horizonEndDateFromUI(){
+    const m = Number($("horizonMonths").value||3);
+    // horizon end = end of month of (today + (m-1) months) OR just (today + m months) EOM
+    const d = todayNoon();
+    const endMonth = endOfMonth(addMonthsKeepDay(d, m-1));
+    return endMonth;
   }
 
-  // ---------- Quick Pay ----------
-  function quickPay(ev){
-    const today = todayNoon();
-    const dateStr = fmtDateInput(today);
-
-    state.adjustments.push({
-      id: uid(),
-      date: dateStr,
-      note: `Quick Paid — ${ev.label}`,
-      amount: ev.amount
-    });
-
-    markPaid(ev.type, ev.refId, ev.date);
-
-    render();
-  }
-
-  // ---------- Payoff estimate (rough + projection) ----------
-  function payoffEstimateText(){
-    const active = state.debts.filter(d=>!d.paidOff);
-    const monthlyExtra = clamp(state.meta.snowballMonthly);
+  // ---------- Payoff estimate (simple) ----------
+  function payoffEstimateText(st){
+    const active = st.debts.filter(d=>!d.paidOff);
+    const monthlyExtra = clamp(st.meta.snowballMonthly);
     if(active.length===0) return "All debts marked paid off. 🎉";
     const mins = active.reduce((a,d)=> a + clamp(d.min), 0);
     const total = active.reduce((a,d)=> a + clamp(d.balance), 0);
-    const pay = mins + monthlyExtra + (sim.active && sim.mode==="extra_monthly" ? clamp(sim.extraMonthly) : 0);
+    const pay = mins + monthlyExtra;
     if(pay <= 0) return "Add minimum payments (and optional snowball) to estimate payoff.";
     const roughMonths = Math.ceil(total / Math.max(1, pay)); // rough, ignores interest
     const years = Math.floor(roughMonths/12), rem = roughMonths%12;
@@ -1028,99 +862,234 @@
     return `Rough payoff pace (ignores interest): <b>${pretty}</b> at ~${money(pay)}/month toward debt.`;
   }
 
-  function projectionSummary(snap){
-    const debts = snap.proj.debts;
-    const active = debts.filter(d=>!d.paidOff);
-    if(active.length===0) return `Projection: all debts paid off by horizon end. 🎉`;
+  // ---------- Interest helper line ----------
+  function interestLine(d){
+    const bal = clamp(d.balance);
+    const apr = clamp(d.apr);
+    const min = clamp(d.min);
+    if(bal<=0 || apr<=0) return `<span class="mini">Est. interest this month: ${money(0)} · Min to principal: ${money(min)}</span>`;
+    const interest = bal * (apr/100) / 12;
+    const principal = Math.max(0, min - interest);
+    const warn = principal <= 0 ? ` · <span style="color:#ffe0a3">⚠ min barely touches principal</span>` : "";
+    return `<span class="mini">Est. interest this month: ${money(interest)} · Min to principal: ${money(principal)}${warn}</span>`;
+  }
 
-    const total = active.reduce((a,d)=> a + clamp(d.balance), 0);
+  // ---------- Quick Pay (Reality only by default) ----------
+  function quickPay(st, ev){
+    const today = todayNoon();
+    const dateStr = fmtDateInput(today);
 
-    // find earliest payoff date among those that did pay off
-    const paid = Object.entries(snap.proj.payoffDate).filter(([,v])=>v instanceof Date);
-    let nextPayoff = null;
-    if(paid.length){
-      paid.sort((a,b)=> a[1]-b[1]);
-      nextPayoff = paid[0][1];
+    st.adjustments.push({
+      id: uid(),
+      date: dateStr,
+      note: `Quick Paid — ${ev.label}`,
+      amount: ev.amount // usually negative
+    });
+
+    markPaid(st, ev.type, ev.refId, ev.date);
+  }
+
+  // ---------- What if? Simulation helpers ----------
+  function enterWhatIf(){
+    if(sim.enabled) return;
+    sim.enabled = true;
+    sim.state = deepClone(state); // sandbox copy
+  }
+  function exitWhatIf(){
+    sim.enabled = false;
+    sim.state = null;
+  }
+  function resetWhatIf(){
+    if(!sim.enabled) return;
+    sim.state = deepClone(state);
+  }
+  function applyWhatIf(){
+    if(!sim.enabled) return;
+    state = deepClone(sim.state);
+    saveState();
+    exitWhatIf();
+  }
+
+  function ensureSimOn(){
+    if(!sim.enabled){
+      alert("Turn on What if? first (top-right).");
+      return false;
     }
+    return true;
+  }
 
-    let s = `Projection: remaining debt at horizon end ≈ <b>${money(total)}</b>.`;
-    if(nextPayoff) s += ` First payoff hits around <b>${nextPayoff.toLocaleDateString()}</b>.`;
-    if(sim.active) s += ` <span class="kbd">SIM</span>`;
-    return s;
+  function simAddOneOff(){
+    if(!ensureSimOn()) return;
+    const st = sim.state;
+    const date = prompt("SIM one-time date (YYYY-MM-DD):", fmtDateInput(todayNoon()));
+    if(date===null) return;
+    const note = prompt("SIM note:", "What if? one-time");
+    if(note===null) return;
+    const amt = prompt("SIM amount (positive=in, negative=out):", "");
+    if(amt===null) return;
+
+    st.adjustments.push({
+      id: uid(),
+      date: date.trim(),
+      note: (note.trim() || "What if? one-time") + " (SIM)",
+      amount: Number(amt)||0
+    });
+  }
+
+  function simWorkPlan(){
+    if(!ensureSimOn()) return;
+    const st = sim.state;
+    const pick = prompt(
+`Work Plan (SIM) — enter 80 / 100 / 120, or type a paycheck amount:
+- 80 hrs example: 1391.31
+- 100 hrs example: 1840.80
+- 120 hrs example: 2386.60
+
+Type: 80, 100, 120, or a custom paycheck net.`,
+"100"
+    );
+    if(pick===null) return;
+    const v = pick.trim();
+    const map = { "80":1391.31, "100":1840.80, "120":2386.60 };
+    const amt = map[v] ?? Number(v);
+    if(!Number.isFinite(amt) || amt<=0){
+      alert("Invalid input. Use 80/100/120 or a positive number.");
+      return;
+    }
+    st.meta.paycheckAmount = amt;
+  }
+
+  function simPayoffDebt(debtId){
+    if(!ensureSimOn()) return;
+    const st = sim.state;
+    const d = st.debts.find(x=>x.id===debtId);
+    if(!d) return;
+    if(d.paidOff || clamp(d.balance)<=0){
+      alert("That debt is already paid off (SIM).");
+      return;
+    }
+    const cashCost = clamp(d.balance);
+    const ok = confirm(`SIM Payoff now?\n\n${d.name}\nPay: ${money(cashCost)}\nThis will (SIM) remove its minimum from the timeline.`);
+    if(!ok) return;
+
+    // simulate paying it today: reduce cash via adjustment, zero balance, mark paid off
+    st.adjustments.push({
+      id: uid(),
+      date: fmtDateInput(todayNoon()),
+      note: `Paid off ${d.name} (SIM)`,
+      amount: -cashCost
+    });
+    d.balance = 0;
+    d.paidOff = true;
+  }
+
+  function simExtraToDebt(debtId){
+    if(!ensureSimOn()) return;
+    const st = sim.state;
+    const d = st.debts.find(x=>x.id===debtId);
+    if(!d) return;
+    if(d.paidOff || clamp(d.balance)<=0){
+      alert("That debt is already paid off (SIM).");
+      return;
+    }
+    const amtStr = prompt(`Extra payment to "${d.name}" (SIM).\nEnter amount:`, "100");
+    if(amtStr===null) return;
+    const amt = Number(amtStr);
+    if(!Number.isFinite(amt) || amt<=0){
+      alert("Enter a positive number.");
+      return;
+    }
+    const pay = Math.min(amt, clamp(d.balance));
+    st.adjustments.push({
+      id: uid(),
+      date: fmtDateInput(todayNoon()),
+      note: `Extra to ${d.name} (SIM)`,
+      amount: -pay
+    });
+    d.balance = Math.max(0, clamp(d.balance) - pay);
+    if(d.balance === 0) d.paidOff = true;
   }
 
   // ---------- Render ----------
   function render(){
+    // mode pill + sim controls
+    $("modePill").textContent = sim.enabled ? "What if?" : "Reality";
+    $("modePill").className = sim.enabled ? "pill purple" : "pill";
+    $("simControls").style.display = sim.enabled ? "block" : "none";
+    $("timelineModeLabel").textContent = sim.enabled ? "What if?" : "Reality";
+
+    const st = activeState();
+
     // meta inputs
-    $("cashOnHand").value = state.meta.cashOnHand ?? 0;
-    $("bufferFloor").value = state.meta.bufferFloor ?? 0;
+    $("cashOnHand").value = st.meta.cashOnHand ?? 0;
+    $("bufferFloor").value = st.meta.bufferFloor ?? 0;
+    $("splitPct").value = String(st.meta.splitPct ?? 0.5);
 
-    $("splitPct").value = String(state.meta.splitPct ?? 0.5);
+    $("payFrequency").value = st.meta.payFrequency ?? "biweekly";
+    $("paycheckAmount").value = st.meta.paycheckAmount ?? 0;
+    $("lastPayday").value = st.meta.lastPayday ?? "";
+    $("snowballMonthly").value = st.meta.snowballMonthly ?? 0;
+    $("snowballAlloc").value = st.meta.snowballAlloc ?? "per_paycheck";
+    $("snowballDay").value = st.meta.snowballDay ?? 20;
 
-    $("payFrequency").value = state.meta.payFrequency ?? "biweekly";
-    $("paycheckAmount").value = state.meta.paycheckAmount ?? 0;
-    $("lastPayday").value = state.meta.lastPayday ?? "";
-    $("snowballMonthly").value = state.meta.snowballMonthly ?? 0;
-    $("snowballAlloc").value = state.meta.snowballAlloc ?? "per_paycheck";
-    $("snowballDay").value = state.meta.snowballDay ?? 20;
-
-    $("strategy").value = state.meta.strategy ?? "snowball";
+    $("strategy").value = st.meta.strategy ?? "snowball";
     updateManualTargets();
 
-    $("horizon").value = String(state.meta.horizonMonths ?? 0);
-
     // toggle snowball day UI
-    const alloc = state.meta.snowballAlloc;
+    const alloc = st.meta.snowballAlloc;
     $("snowballDayWrap").style.display = alloc==="monthly_day" ? "block" : "none";
     $("allocHelp").textContent = alloc==="monthly_day" ? "Snowball posts on the chosen day." : "Snowball splits across paychecks inside the timeline.";
 
     // next payday
-    const nxt = nextPaydayFrom(state.meta.lastPayday, state.meta.payFrequency);
+    const nxt = nextPaydayFrom(st.meta.lastPayday, st.meta.payFrequency);
     $("nextPayday").value = nxt ? fmtDateInput(nxt) : "";
 
-    // snapshot
-    const snap = computeSnapshot();
-    $("committedBeforeNext").textContent = money(snap.committed);
-    $("safeToSpend").textContent = money(snap.safe);
-    $("projAtNextPay").textContent = money(snap.balAtNextPay);
-    $("projHorizon").textContent = money(snap.balH);
+    // horizon date
+    const horizonEnd = horizonEndDateFromUI();
 
-    // simulation bar
-    const sb = $("simBar");
-    if(sim.active){
-      sb.style.display = "block";
-      let label = "";
-      if(sim.mode==="payoff_now"){
-        const d = state.debts.find(x=>x.id===sim.debtId);
-        label = d ? `Payoff Now (virtual) — ${d.name}` : "Payoff Now (virtual)";
-      } else if(sim.mode==="extra_monthly"){
-        const d = state.debts.find(x=>x.id===sim.debtId);
-        label = `${money(sim.extraMonthly)}/mo extra (virtual) → ${d ? d.name : "Selected Debt"}`;
-      }
-      $("simLabel").textContent = label;
-    } else {
-      sb.style.display = "none";
-    }
+    // snapshots: Reality + What if?
+    const rSnap = computeSnapshot(state, horizonEnd);
+    const sSnap = computeSnapshot(sim.enabled ? sim.state : state, horizonEnd);
 
-    // health pill
+    $("r_safe").textContent = money(rSnap.safe);
+    $("r_committed").textContent = money(rSnap.committed);
+    $("r_nextpay").textContent = money(rSnap.balAtNextPay);
+    $("r_horizon").textContent = money(rSnap.balHorizon);
+
+    $("s_safe").textContent = money(sSnap.safe);
+    $("s_committed").textContent = money(sSnap.committed);
+    $("s_nextpay").textContent = money(sSnap.balAtNextPay);
+    $("s_horizon").textContent = money(sSnap.balHorizon);
+
+    const deltaH = sSnap.balHorizon - rSnap.balHorizon;
+    $("delta_horizon").textContent = (deltaH>=0?"+":"") + money(deltaH);
+    $("delta_horizon").className = "v mono " + (deltaH>=0 ? "deltaPos" : "deltaNeg");
+
+    const rMin = state.debts.filter(d=>!d.paidOff).reduce((a,d)=>a+clamp(d.min),0);
+    const sMin = (sim.enabled ? sim.state : state).debts.filter(d=>!d.paidOff).reduce((a,d)=>a+clamp(d.min),0);
+    const freed = rMin - sMin;
+    $("delta_minfreed").textContent = (freed>=0?"+":"") + money(freed);
+    $("delta_minfreed").className = "v mono " + (freed>=0 ? "deltaPos" : "deltaNeg");
+
+    // health pill (based on active snapshot)
+    const activeSnap = sim.enabled ? sSnap : rSnap;
     const hp = $("healthPill");
-    const buffer = clamp(state.meta.bufferFloor);
-    if(snap.safe < 0){
+    if(activeSnap.safe < 0){
       hp.textContent = "Tight (reduce snowball / adjust splits)";
       hp.className = "pill warn";
-    } else if(snap.balH < buffer){
-      hp.textContent = "Below buffer by horizon end";
+    } else if(activeSnap.balHorizon < clamp(st.meta.bufferFloor)){
+      hp.textContent = "Below buffer by horizon";
       hp.className = "pill bad";
     } else {
       hp.textContent = "Healthy";
       hp.className = "pill good";
     }
 
-    // timeline (next 10)
+    // timeline (next 10) — from active state
     const tb = $("timelineTbody");
     tb.innerHTML = "";
-    snap.running.slice(0, 10).forEach(ev=>{
-      const canQuickPay = (ev.amount < 0) && (ev.type !== "adj") && (ev.type !== "sim"); // don't quick pay adj/sim
+    activeSnap.running.slice(0, 10).forEach(ev=>{
+      const canQuickPay = (ev.amount < 0) && (ev.type !== "adj");
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="mono">${ev.date.toLocaleDateString()}</td>
@@ -1134,10 +1103,10 @@
       tb.appendChild(tr);
     });
 
-    // bills table
+    // bills table (active state)
     const btb = $("billsTbody");
     btb.innerHTML = "";
-    state.bills.forEach(b=>{
+    st.bills.forEach(b=>{
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml(b.name||"")}</td>
@@ -1154,24 +1123,20 @@
       btb.appendChild(tr);
     });
 
-    // debts table
+    // debts table (active state)
     const dtb = $("debtsTbody");
     dtb.innerHTML = "";
-
-    state.debts.forEach(d=>{
-      const ip = currentMonthInterestPrincipal(d);
-      const intr = ip.intr;
-      const prin = ip.prin;
-
-      const intrTxt = intr > 0 ? money(intr) : "$0.00";
-      const prinTxt = money(Math.max(0, prin));
-      const warn = prin < 0 ? ` • <span style="color:#ffe0a3">Min doesn’t cover interest</span>` : "";
-
+    st.debts.forEach(d=>{
       const tr = document.createElement("tr");
+      const simBtns = sim.enabled && !d.paidOff ? `
+        <button class="btn sm" data-act="simPayoff" data-id="${d.id}">Payoff (SIM)</button>
+        <button class="btn ghost sm" data-act="simExtra" data-id="${d.id}">+ Extra (SIM)</button>
+      ` : (sim.enabled ? `<span class="small">—</span>` : ``);
+
       tr.innerHTML = `
         <td>
-          <div>${escapeHtml(d.name||"")}</div>
-          <div class="debtNote">Interest/mo: <span class="mono">${intrTxt}</span> • Principal: <span class="mono">${prinTxt}</span>${warn}</div>
+          ${escapeHtml(d.name||"")}
+          ${interestLine(d)}
         </td>
         <td class="right mono">${money(d.balance)}</td>
         <td class="right mono">${clamp(d.apr).toFixed(2)}%</td>
@@ -1179,8 +1144,7 @@
         <td class="right mono">${escapeHtml(String(d.dueDay||""))}</td>
         <td class="right"><input class="chk" type="checkbox" data-act="togglePaidDebt" data-id="${d.id}" ${d.paidOff?"checked":""} /></td>
         <td class="right">
-          <button class="btn ghost xs" data-act="simPayoffNow" data-id="${d.id}">Payoff Now (SIM)</button>
-          <button class="btn ghost xs" data-act="simExtraMonthly" data-id="${d.id}">+$/mo (SIM)</button>
+          ${simBtns}
           <div style="height:6px"></div>
           <button class="btn ghost sm" data-act="editDebt" data-id="${d.id}">Edit</button>
           <button class="btn danger sm" data-act="delDebt" data-id="${d.id}">Del</button>
@@ -1189,13 +1153,12 @@
       dtb.appendChild(tr);
     });
 
-    $("payoffBox").innerHTML = payoffEstimateText();
-    $("projPayoffBox").innerHTML = projectionSummary(snap);
+    $("payoffBox").innerHTML = payoffEstimateText(st);
 
-    // adjustments
+    // adjustments (active state)
     const atb = $("adjTbody");
     atb.innerHTML = "";
-    state.adjustments
+    st.adjustments
       .slice()
       .sort((a,b)=> (parseDateInput(a.date)||0) - (parseDateInput(b.date)||0))
       .forEach(a=>{
@@ -1211,11 +1174,13 @@
         atb.appendChild(tr);
       });
 
+    // persist only reality state
     saveState();
   }
 
   // ---------- Add/Edit prompts ----------
   function addOrEditBill(existing){
+    const st = activeState();
     const name = prompt("Bill name:", existing?.name ?? "");
     if(name===null) return;
     const amount = prompt("Monthly amount:", existing?.amount ?? "");
@@ -1233,15 +1198,16 @@
     };
 
     if(existing){
-      const i = state.bills.findIndex(b=>b.id===existing.id);
-      if(i>=0) state.bills[i]=bill;
+      const i = st.bills.findIndex(b=>b.id===existing.id);
+      if(i>=0) st.bills[i]=bill;
     } else {
-      state.bills.push(bill);
+      st.bills.push(bill);
     }
     render();
   }
 
   function addOrEditDebt(existing){
+    const st = activeState();
     const name = prompt("Debt name:", existing?.name ?? "");
     if(name===null) return;
     const balance = prompt("Current balance:", existing?.balance ?? "");
@@ -1264,16 +1230,17 @@
     };
 
     if(existing){
-      const i = state.debts.findIndex(d=>d.id===existing.id);
-      if(i>=0) state.debts[i]=debt;
+      const i = st.debts.findIndex(d=>d.id===existing.id);
+      if(i>=0) st.debts[i]=debt;
     } else {
-      state.debts.push(debt);
-      if(!state.meta.manualTargetId) state.meta.manualTargetId = debt.id;
+      st.debts.push(debt);
+      if(!st.meta.manualTargetId) st.meta.manualTargetId = debt.id;
     }
     render();
   }
 
   function addAdjustment(){
+    const st = activeState();
     const date = prompt("Date (YYYY-MM-DD):", fmtDateInput(todayNoon()));
     if(date===null) return;
     const note = prompt("Note:", "");
@@ -1281,7 +1248,7 @@
     const amt = prompt("Amount (positive=in, negative=out):", "");
     if(amt===null) return;
 
-    state.adjustments.push({
+    st.adjustments.push({
       id: uid(),
       date: date.trim(),
       note: note.trim() || "Adjustment",
@@ -1290,111 +1257,182 @@
     render();
   }
 
-  // ---------- Event Wiring ----------
-  $("cashOnHand").addEventListener("input", e=>{ state.meta.cashOnHand = Number(e.target.value)||0; render(); });
-  $("bufferFloor").addEventListener("input", e=>{ state.meta.bufferFloor = Number(e.target.value)||0; render(); });
+  // ---------- Input Wiring ----------
+  function bindMetaToActive(id, key, castFn){
+    $(id).addEventListener("input", e=>{
+      const st = activeState();
+      st.meta[key] = castFn(e.target.value);
+      render();
+    });
+  }
 
-  $("splitPct").addEventListener("change", e=>{ state.meta.splitPct = Number(e.target.value)||0.5; render(); });
+  $("horizonMonths").addEventListener("change", render);
 
-  $("horizon").addEventListener("change", e=>{ state.meta.horizonMonths = Number(e.target.value)||0; render(); });
+  $("cashOnHand").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.cashOnHand = Number(e.target.value)||0;
+    render();
+  });
+  $("bufferFloor").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.bufferFloor = Number(e.target.value)||0;
+    render();
+  });
 
-  $("payFrequency").addEventListener("change", e=>{ state.meta.payFrequency = e.target.value; render(); });
-  $("paycheckAmount").addEventListener("input", e=>{ state.meta.paycheckAmount = Number(e.target.value)||0; render(); });
-  $("lastPayday").addEventListener("change", e=>{ state.meta.lastPayday = e.target.value||""; render(); });
+  $("splitPct").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.splitPct = Number(e.target.value)||0.5;
+    render();
+  });
 
-  $("snowballMonthly").addEventListener("input", e=>{ state.meta.snowballMonthly = Number(e.target.value)||0; render(); });
-  $("snowballAlloc").addEventListener("change", e=>{ state.meta.snowballAlloc = e.target.value; render(); });
-  $("snowballDay").addEventListener("input", e=>{ state.meta.snowballDay = Number(e.target.value)||20; render(); });
+  $("payFrequency").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.payFrequency = e.target.value;
+    render();
+  });
+  $("paycheckAmount").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.paycheckAmount = Number(e.target.value)||0;
+    render();
+  });
+  $("lastPayday").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.lastPayday = e.target.value||"";
+    render();
+  });
 
-  $("strategy").addEventListener("change", e=>{ state.meta.strategy = e.target.value; render(); });
-  $("manualTarget").addEventListener("change", e=>{ state.meta.manualTargetId = e.target.value || null; render(); });
+  $("snowballMonthly").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.snowballMonthly = Number(e.target.value)||0;
+    render();
+  });
+  $("snowballAlloc").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.snowballAlloc = e.target.value;
+    render();
+  });
+  $("snowballDay").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.snowballDay = Number(e.target.value)||20;
+    render();
+  });
+
+  $("strategy").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.strategy = e.target.value;
+    render();
+  });
+  $("manualTarget").addEventListener("change", e=>{
+    const st = activeState();
+    st.meta.manualTargetId = e.target.value || null;
+    render();
+  });
 
   $("addBillBtn").addEventListener("click", ()=> addOrEditBill(null));
   $("addDebtBtn").addEventListener("click", ()=> addOrEditDebt(null));
   $("addAdjBtn").addEventListener("click", ()=> addAdjustment());
 
-  $("exitSimBtn").addEventListener("click", ()=>{
-    sim.active = false;
-    sim.mode = null;
-    sim.debtId = null;
-    sim.extraMonthly = 0;
+  // What if controls
+  $("whatIfBtn").addEventListener("click", ()=>{
+    if(sim.enabled){
+      // quick toggle off
+      if(confirm("Exit What if? (sandbox changes will be discarded unless Applied).")) {
+        exitWhatIf();
+        render();
+      }
+      return;
+    }
+    enterWhatIf();
     render();
   });
 
+  $("applySimBtn").addEventListener("click", ()=>{
+    if(!sim.enabled) return;
+    if(!confirm("Apply What if? changes to Reality? (This will overwrite Reality with the sandbox state.)")) return;
+    applyWhatIf();
+    render();
+  });
+
+  $("resetSimBtn").addEventListener("click", ()=>{
+    if(!sim.enabled) return;
+    if(!confirm("Reset What if? back to Reality (discard sandbox tinkering)?")) return;
+    resetWhatIf();
+    render();
+  });
+
+  $("exitSimBtn").addEventListener("click", ()=>{
+    if(!sim.enabled) return;
+    if(!confirm("Exit What if? (discard sandbox changes unless Applied).")) return;
+    exitWhatIf();
+    render();
+  });
+
+  $("simOneOffBtn").addEventListener("click", ()=>{
+    if(!ensureSimOn()) return;
+    simAddOneOff();
+    render();
+  });
+
+  $("simWorkPlanBtn").addEventListener("click", ()=>{
+    if(!ensureSimOn()) return;
+    simWorkPlan();
+    render();
+  });
+
+  // ---------- Delegated clicks ----------
   document.addEventListener("click", (e)=>{
     const btn = e.target.closest("[data-act]");
     if(!btn) return;
     const act = btn.dataset.act;
+    const st = activeState();
 
-    // Quick Pay from timeline
+    // Quick Pay from timeline (acts on active state)
     if(act==="quickPay"){
       const type = btn.dataset.type;
       const refId = btn.dataset.ref;
       const date = parseDateInput(btn.dataset.date);
       if(!date) return;
 
-      const snap = computeSnapshot();
+      const horizonEnd = horizonEndDateFromUI();
+      const snap = computeSnapshot(st, horizonEnd);
       const found = snap.running.find(ev => ev.type===type && ev.refId===refId && fmtDateInput(ev.date)===fmtDateInput(date));
       if(!found) return;
 
-      if(!confirm(`Quick Pay now?\n\n${found.label}\n${money(found.amount)}`)) return;
-      quickPay(found);
-      return;
-    }
-
-    // SIM actions
-    if(act==="simPayoffNow"){
-      const id = btn.dataset.id;
-      const d = state.debts.find(x=>x.id===id);
-      if(!d || d.paidOff) return alert("That debt is already marked paid off.");
-      sim.active = true;
-      sim.mode = "payoff_now";
-      sim.debtId = id;
-      sim.extraMonthly = 0;
+      const label = sim.enabled ? "Quick Pay (SIM) now?" : "Quick Pay now?";
+      if(!confirm(`${label}\n\n${found.label}\n${money(found.amount)}`)) return;
+      quickPay(st, found);
       render();
       return;
     }
 
-    if(act==="simExtraMonthly"){
-      const id = btn.dataset.id;
-      const d = state.debts.find(x=>x.id===id);
-      if(!d || d.paidOff) return alert("That debt is already marked paid off.");
-      const amt = prompt("Extra monthly amount to simulate (e.g., 100):", "100");
-      if(amt===null) return;
-      const n = Number(amt)||0;
-      if(n<=0) return alert("Enter a positive number.");
-      sim.active = true;
-      sim.mode = "extra_monthly";
-      sim.debtId = id;
-      sim.extraMonthly = n;
-      render();
-      return;
-    }
-
-    // bills/debts/adjustments edits
     const id = btn.dataset.id;
 
-    if(act==="delBill"){ state.bills = state.bills.filter(b=>b.id!==id); render(); return; }
-    if(act==="editBill"){ const b = state.bills.find(x=>x.id===id); if(b) addOrEditBill(b); return; }
+    // SIM actions
+    if(act==="simPayoff"){ simPayoffDebt(id); render(); return; }
+    if(act==="simExtra"){ simExtraToDebt(id); render(); return; }
+
+    // bills/debts/adjustments edits
+    if(act==="delBill"){ st.bills = st.bills.filter(b=>b.id!==id); render(); return; }
+    if(act==="editBill"){ const b = st.bills.find(x=>x.id===id); if(b) addOrEditBill(b); return; }
 
     if(act==="delDebt"){
-      state.debts = state.debts.filter(d=>d.id!==id);
-      if(state.meta.manualTargetId===id) state.meta.manualTargetId=null;
-      if(sim.active && sim.debtId===id){ sim.active=false; sim.mode=null; sim.debtId=null; sim.extraMonthly=0; }
+      st.debts = st.debts.filter(d=>d.id!==id);
+      if(st.meta.manualTargetId===id) st.meta.manualTargetId=null;
       render(); return;
     }
-    if(act==="editDebt"){ const d = state.debts.find(x=>x.id===id); if(d) addOrEditDebt(d); return; }
+    if(act==="editDebt"){ const d = st.debts.find(x=>x.id===id); if(d) addOrEditDebt(d); return; }
 
-    if(act==="delAdj"){ state.adjustments = state.adjustments.filter(a=>a.id!==id); render(); return; }
+    if(act==="delAdj"){ st.adjustments = st.adjustments.filter(a=>a.id!==id); render(); return; }
   });
 
   document.addEventListener("change", (e)=>{
     const t = e.target;
+    const st = activeState();
 
     // toggle split on bills
     if(t && t.matches('input[type="checkbox"][data-act="toggleSplit"]')){
       const id = t.dataset.id;
-      const b = state.bills.find(x=>x.id===id);
+      const b = st.bills.find(x=>x.id===id);
       if(b) b.splitAllowed = !!t.checked;
       render();
     }
@@ -1402,14 +1440,15 @@
     // toggle paid off debt
     if(t && t.matches('input[type="checkbox"][data-act="togglePaidDebt"]')){
       const id = t.dataset.id;
-      const d = state.debts.find(x=>x.id===id);
+      const d = st.debts.find(x=>x.id===id);
       if(d) d.paidOff = !!t.checked;
       render();
     }
   });
 
-  // Export / Import / Reset
+  // Export / Import / Reset (Reality only)
   $("exportBtn").addEventListener("click", ()=>{
+    if(sim.enabled && !confirm("You are in What if?. Export will export Reality only. Continue?")) return;
     const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1419,21 +1458,23 @@
     a.remove();
   });
 
-  $("importBtn").addEventListener("click", ()=> $("fileInput").click());
+  $("importBtn").addEventListener("click", ()=>{
+    if(sim.enabled && !confirm("Import replaces Reality. Exit What if? first (recommended). Continue anyway?")) return;
+    $("fileInput").click();
+  });
+
   $("fileInput").addEventListener("change", async (e)=>{
     const file = e.target.files?.[0];
     if(!file) return;
     try{
       const text = await file.text();
       const p = JSON.parse(text);
-      state = {
-        meta:{...defaultState.meta, ...(p.meta||{})},
-        bills:Array.isArray(p.bills)?p.bills:[],
-        debts:Array.isArray(p.debts)?p.debts:[],
-        adjustments:Array.isArray(p.adjustments)?p.adjustments:[],
-        paidCycles: (p.paidCycles && typeof p.paidCycles==="object") ? p.paidCycles : {}
-      };
+      state = normalizeState(p);
       saveState();
+      // if sim on, refresh sim as well so Reality + Sim don't drift weirdly
+      if(sim.enabled){
+        sim.state = deepClone(state);
+      }
       render();
       alert("Import complete.");
     } catch {
@@ -1446,26 +1487,9 @@
   $("resetBtn").addEventListener("click", ()=>{
     if(!confirm("Reset all tracker data on this device? This cannot be undone.")) return;
     localStorage.removeItem(KEY);
-    state = structuredClone(defaultState);
-    sim.active=false; sim.mode=null; sim.debtId=null; sim.extraMonthly=0;
+    state = deepClone(defaultState);
+    exitWhatIf();
     render();
-  });
-
-  // Create Link
-  $("createLinkBtn").addEventListener("click", async ()=>{
-    try{
-      const payload = encodeTransfer(state);
-      const link = location.origin + location.pathname + location.search + "#t=" + payload;
-      $("transferLink").value = link;
-      $("linkBox").style.display = "block";
-      $("transferLink").focus();
-      $("transferLink").select();
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        await navigator.clipboard.writeText(link);
-      }
-    } catch(e){
-      alert("Could not create link (state may be too large).");
-    }
   });
 
   // Init
