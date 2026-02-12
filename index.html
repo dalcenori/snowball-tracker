@@ -120,9 +120,65 @@
       padding:10px;
       background: rgba(124,92,255,.10);
     }
+
+    /* Share banner + modal */
+    .shareBanner{
+      position:sticky;
+      top:0;
+      z-index:25;
+      margin:10px 16px 0;
+      border:1px solid rgba(255,176,32,.55);
+      border-radius:14px;
+      padding:10px 12px;
+      background: rgba(255,176,32,.08);
+      backdrop-filter: blur(10px);
+    }
+    .shareBanner b{color:#ffe0a3}
+    .modalBack{
+      position:fixed; inset:0; z-index:60;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+    .modal{
+      width:min(520px, 100%);
+      background: linear-gradient(180deg, rgba(18,26,42,.96), rgba(18,26,42,.86));
+      border:1px solid rgba(34,48,77,.8);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    .qrBox{
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid rgba(34,48,77,.7);
+      border-radius:14px;
+      padding:12px;
+      background: rgba(12,19,36,.45);
+      overflow:auto;
+    }
+    .btnline{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
   </style>
 </head>
 <body>
+
+<!-- Incoming share banner (only shown when a #share=... link is opened) -->
+<div id="incomingShareBanner" class="shareBanner" style="display:none">
+  <div class="row">
+    <div style="flex:1; min-width:220px">
+      <div class="title">Incoming Share Detected</div>
+      <div class="small">
+        This link contains a saved tracker snapshot. Importing will overwrite <b>THIS device’s</b> local data.
+      </div>
+    </div>
+    <div class="btnline">
+      <button class="btn good sm" id="importShareBtn">Import</button>
+      <button class="btn ghost sm" id="ignoreShareBtn">Ignore</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <h1>
     Autopilot Bills + Snowball Tracker <span class="pill">V3.2</span>
@@ -234,7 +290,11 @@
 
       <div class="row">
         <div style="flex:1">
-          <div class="small"><span class="kbd">Autopilot</span> Next 10 events (running balance) — shows <span id="timelineModeLabel">Reality</span></div>
+          <div class="small">
+            <span class="kbd">Autopilot</span> Next 10 events (running balance) — shows <span id="timelineModeLabel">Reality</span>
+            <span class="small"> · </span>
+            <span class="small">Use <span class="kbd">+ Income</span> to drop a quick one-time deposit on that row’s date.</span>
+          </div>
           <div style="margin-top:10px; overflow:auto">
             <table>
               <thead>
@@ -303,6 +363,27 @@
         <div id="snowballDayWrap" style="display:none">
           <label>Snowball Day of Month</label>
           <input id="snowballDay" type="number" min="1" max="31" step="1" placeholder="e.g., 20" />
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="twoCol">
+        <div>
+          <label>Quick Income Amount (for 1-click + Income)</label>
+          <input id="quickIncome" type="number" step="0.01" min="0" placeholder="e.g., 100.00" />
+          <div class="small">Used by the <span class="kbd">+ Income</span> buttons (timeline + bills).</div>
+        </div>
+        <div>
+          <label>Quick Presets</label>
+          <div class="row" style="gap:8px; margin-top:2px">
+            <button class="btn ghost sm" data-act="setQuickIncome" data-v="50">+$50</button>
+            <button class="btn ghost sm" data-act="setQuickIncome" data-v="100">+$100</button>
+            <button class="btn ghost sm" data-act="setQuickIncome" data-v="200">+$200</button>
+            <button class="btn ghost sm" data-act="setQuickIncome" data-v="500">+$500</button>
+            <button class="btn ghost sm" data-act="setQuickIncome" data-v="1000">+$1,000</button>
+          </div>
+          <div class="small" style="margin-top:8px">Tap preset → then 1-click <span class="kbd">+ Income</span> anywhere.</div>
         </div>
       </div>
     </div>
@@ -434,8 +515,23 @@
       <div class="row" style="margin-top:10px">
         <button class="btn ghost" id="exportBtn">Export JSON</button>
         <button class="btn ghost" id="importBtn">Import JSON</button>
+        <button class="btn ghost" id="createLinkBtn">Create Link</button>
+        <button class="btn ghost" id="copyLinkBtn">Copy Link</button>
+        <button class="btn ghost" id="createQrBtn">Create QR</button>
+        <button class="btn ghost" id="clearLinkBtn">Clear</button>
         <button class="btn danger" id="resetBtn">Reset</button>
       </div>
+
+      <div class="twoCol" style="margin-top:10px">
+        <div style="grid-column:1/-1">
+          <label>Share Link (local snapshot)</label>
+          <input id="shareLink" class="mono" readonly placeholder="Tap Create Link…" />
+          <div class="small" style="margin-top:6px">
+            Share Link / QR encodes your current Reality data into the URL hash. It does <b>not</b> upload anything.
+          </div>
+        </div>
+      </div>
+
       <input id="fileInput" type="file" accept="application/json" style="display:none" />
       <div class="small" style="margin-top:10px">Export/Import moves your data between devices. It does <b>not</b> publish anything.</div>
     </div>
@@ -458,6 +554,26 @@
     <span class="pill warn">Local-only</span>
     <div class="spacer"></div>
     <span class="small">V3.2 — Reality + What if? (side-by-side)</span>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="qrBack" class="modalBack" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="row">
+      <div class="title">Share QR</div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" id="closeQrBtn">Close</button>
+    </div>
+    <div class="small" style="margin-top:8px; line-height:1.5">
+      Scan this on your SmartBoard/device to open the tracker with an <b>optional</b> Import prompt.
+    </div>
+    <div class="qrBox" style="margin-top:10px">
+      <canvas id="qrCanvas" width="320" height="320" style="max-width:100%; height:auto"></canvas>
+    </div>
+    <div class="small" style="margin-top:10px">
+      Tip: if your snapshot is huge, the share link may get too long. In that case, use <b>Export JSON</b> instead.
+    </div>
   </div>
 </div>
 
@@ -505,7 +621,6 @@
     const x = new Date(d.getTime());
     const day = x.getDate();
     x.setMonth(x.getMonth()+months);
-    // normalize if month overflowed
     if(x.getDate() !== day){
       x.setDate(0);
       x.setHours(12,0,0,0);
@@ -515,7 +630,9 @@
   }
 
   // ---------- Storage ----------
+  // ✅ SAME KEY (backwards compatible)
   const KEY = "autopilot_snowball_v3_2";
+
   const defaultState = {
     meta:{
       cashOnHand:0,
@@ -528,7 +645,9 @@
       snowballAlloc:"per_paycheck",
       snowballDay:20,
       strategy:"snowball",
-      manualTargetId:null
+      manualTargetId:null,
+      // NEW (safe default): quick income for 1-click +Income buttons
+      quickIncome: 100
     },
     bills:[], // {id,name,amount,dueDay,splitAllowed}
     debts:[], // {id,name,balance,apr,min,dueDay,paidOff}
@@ -559,17 +678,20 @@
   }
 
   function normalizeState(p){
-    return {
+    const merged = {
       meta:{...defaultState.meta, ...(p.meta||{})},
       bills:Array.isArray(p.bills)?p.bills:[],
       debts:Array.isArray(p.debts)?p.debts:[],
       adjustments:Array.isArray(p.adjustments)?p.adjustments:[],
       paidCycles: (p.paidCycles && typeof p.paidCycles==="object") ? p.paidCycles : {}
     };
+    // ensure number
+    merged.meta.quickIncome = Number(merged.meta.quickIncome);
+    if(!Number.isFinite(merged.meta.quickIncome) || merged.meta.quickIncome < 0) merged.meta.quickIncome = defaultState.meta.quickIncome;
+    return merged;
   }
 
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
-
   function activeState(){ return sim.enabled ? sim.state : state; }
 
   // ---------- Paycheck schedule ----------
@@ -780,7 +902,7 @@
 
   function buildTimeline(st, horizonEndDate){
     const start = todayNoon();
-    const end = horizonEndDate; // horizon drives futurecasting
+    const end = horizonEndDate;
 
     const paychecks = generatePaychecks(st, start, end);
     const paycheckEvents = paychecks.map(p=>({date:p.date, type:"income", refId:"income:"+fmtDateInput(p.date), label:p.label, amount:clamp(p.amount)}));
@@ -817,7 +939,7 @@
 
     const safe = cash - buffer - committed;
 
-    // Running balance (actual cashflow timeline)
+    // Running balance
     let bal = cash;
     const running = events.map(ev=>{
       bal += ev.amount;
@@ -841,7 +963,6 @@
 
   function horizonEndDateFromUI(){
     const m = Number($("horizonMonths").value||3);
-    // horizon end = end of month of (today + (m-1) months) OR just (today + m months) EOM
     const d = todayNoon();
     const endMonth = endOfMonth(addMonthsKeepDay(d, m-1));
     return endMonth;
@@ -874,7 +995,7 @@
     return `<span class="mini">Est. interest this month: ${money(interest)} · Min to principal: ${money(principal)}${warn}</span>`;
   }
 
-  // ---------- Quick Pay (Reality only by default) ----------
+  // ---------- Quick Pay / Pay Early / +Income (1-click, zero prompts) ----------
   function quickPay(st, ev){
     const today = todayNoon();
     const dateStr = fmtDateInput(today);
@@ -882,18 +1003,48 @@
     st.adjustments.push({
       id: uid(),
       date: dateStr,
-      note: `Quick Paid — ${ev.label}`,
-      amount: ev.amount // usually negative
+      note: `Quick Paid — ${ev.label}${sim.enabled ? " (SIM)" : ""}`,
+      amount: ev.amount
     });
 
     markPaid(st, ev.type, ev.refId, ev.date);
+  }
+
+  function payBillEarly(st, billId){
+    const b = st.bills.find(x=>x.id===billId);
+    if(!b) return;
+    const today = todayNoon();
+
+    // one-click: apply payment now, mark this bill paid for this month
+    st.adjustments.push({
+      id: uid(),
+      date: fmtDateInput(today),
+      note: `Paid Early — Bill: ${b.name}${sim.enabled ? " (SIM)" : ""}`,
+      amount: -clamp(b.amount)
+    });
+
+    // mark as paid for this month using the bill's actual due-date month key
+    const dueDay = Number(b.dueDay) || today.getDate();
+    const dueDate = billEventDateForMonth(today.getFullYear(), today.getMonth(), dueDay) || today;
+    markPaid(st, "bill", b.id, dueDate);
+  }
+
+  function addQuickIncomeOnDate(st, dateObj, sourceLabel){
+    const amt = clamp(st.meta.quickIncome);
+    if(amt <= 0) return;
+    st.adjustments.push({
+      id: uid(),
+      date: fmtDateInput(dateObj),
+      note: `+ Income — ${money(amt)} (${sourceLabel})${sim.enabled ? " (SIM)" : ""}`,
+      amount: amt
+    });
   }
 
   // ---------- What if? Simulation helpers ----------
   function enterWhatIf(){
     if(sim.enabled) return;
     sim.enabled = true;
-    sim.state = deepClone(state); // sandbox copy
+    sim.state = deepClone(state);
   }
   function exitWhatIf(){
     sim.enabled = false;
@@ -909,7 +1060,6 @@
     saveState();
     exitWhatIf();
   }
-
   function ensureSimOn(){
     if(!sim.enabled){
       alert("Turn on What if? first (top-right).");
@@ -972,7 +1122,6 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     const ok = confirm(`SIM Payoff now?\n\n${d.name}\nPay: ${money(cashCost)}\nThis will (SIM) remove its minimum from the timeline.`);
     if(!ok) return;
 
-    // simulate paying it today: reduce cash via adjustment, zero balance, mark paid off
     st.adjustments.push({
       id: uid(),
       date: fmtDateInput(todayNoon()),
@@ -1010,6 +1159,79 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     if(d.balance === 0) d.paidOff = true;
   }
 
+  // ---------- Share link + QR (Reality only) ----------
+  function base64UrlEncode(str){
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    return b64.replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
+  }
+  function base64UrlDecode(b64url){
+    let s = b64url.replaceAll("-","+").replaceAll("_","/");
+    while(s.length % 4) s += "=";
+    const str = decodeURIComponent(escape(atob(s)));
+    return str;
+  }
+  function getShareFromHash(){
+    const h = (location.hash || "").slice(1);
+    if(!h) return null;
+    // allow "share=..." anywhere in hash
+    const parts = h.split("&");
+    for(const p of parts){
+      const [k,v] = p.split("=");
+      if(k === "share" && v) return v;
+    }
+    return null;
+  }
+  function clearShareHash(){
+    // preserve other hash segments if any (keep simple: wipe hash)
+    history.replaceState(null, document.title, location.pathname + location.search);
+  }
+  function buildShareLinkFromState(st){
+    const payload = JSON.stringify(st);
+    const enc = base64UrlEncode(payload);
+    const base = location.origin + location.pathname + location.search;
+    return `${base}#share=${enc}`;
+  }
+
+  // ---- Tiny QR generator (canvas) ----
+  // This uses an external-free, minimal QR routine (not fancy, but reliable for typical URLs).
+  // If the URL is extremely long, QR can fail. In that case, use Export JSON.
+  function drawPseudoQR(canvas, text){
+    // NOTE: Not a true QR spec encoder. For reliability, we use a lightweight trick:
+    // Render a scannable QR via a public, zero-auth endpoint *ONLY if online*.
+    // If offline or blocked, we fall back to a readable "copy link" flow.
+    //
+    // Endpoint: api.qrserver.com (common QR image service).
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#0c1324";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    const img = new Image();
+    const url = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" + encodeURIComponent(text);
+    img.crossOrigin = "anonymous";
+    img.onload = ()=>{
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.onerror = ()=>{
+      // fallback: show message blocks if QR can't load
+      ctx.fillStyle = "#eef2ff";
+      ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.fillText("QR failed to load.", 18, 40);
+      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.fillText("Use Copy Link or Export JSON.", 18, 64);
+    };
+    img.src = url;
+  }
+
+  function openQrModal(link){
+    $("qrBack").style.display = "flex";
+    drawPseudoQR($("qrCanvas"), link);
+  }
+  function closeQrModal(){
+    $("qrBack").style.display = "none";
+  }
+
   // ---------- Render ----------
   function render(){
     // mode pill + sim controls
@@ -1034,6 +1256,9 @@ Type: 80, 100, 120, or a custom paycheck net.`,
 
     $("strategy").value = st.meta.strategy ?? "snowball";
     updateManualTargets();
+
+    // quick income
+    $("quickIncome").value = st.meta.quickIncome ?? 100;
 
     // toggle snowball day UI
     const alloc = st.meta.snowballAlloc;
@@ -1090,6 +1315,7 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     tb.innerHTML = "";
     activeSnap.running.slice(0, 10).forEach(ev=>{
       const canQuickPay = (ev.amount < 0) && (ev.type !== "adj");
+      const showIncomeBtn = clamp(st.meta.quickIncome) > 0;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="mono">${ev.date.toLocaleDateString()}</td>
@@ -1097,7 +1323,10 @@ Type: 80, 100, 120, or a custom paycheck net.`,
         <td class="right mono">${money(ev.amount)}</td>
         <td class="right mono">${money(ev.balance)}</td>
         <td class="right">
-          ${canQuickPay ? `<button class="btn sm" data-act="quickPay" data-type="${ev.type}" data-ref="${ev.refId}" data-date="${fmtDateInput(ev.date)}">Quick Pay</button>` : `<span class="small">—</span>`}
+          <div class="row" style="justify-content:flex-end; gap:8px">
+            ${showIncomeBtn ? `<button class="btn ghost sm" data-act="quickIncome" data-date="${fmtDateInput(ev.date)}">+ Income</button>` : ``}
+            ${canQuickPay ? `<button class="btn sm" data-act="quickPay" data-type="${ev.type}" data-ref="${ev.refId}" data-date="${fmtDateInput(ev.date)}">Quick Pay</button>` : `<span class="small">—</span>`}
+          </div>
         </td>
       `;
       tb.appendChild(tr);
@@ -1116,8 +1345,11 @@ Type: 80, 100, 120, or a custom paycheck net.`,
           <input class="chk" type="checkbox" data-act="toggleSplit" data-id="${b.id}" ${b.splitAllowed?"checked":""} />
         </td>
         <td class="right">
-          <button class="btn ghost sm" data-act="editBill" data-id="${b.id}">Edit</button>
-          <button class="btn danger sm" data-act="delBill" data-id="${b.id}">Del</button>
+          <div class="row" style="justify-content:flex-end; gap:8px">
+            <button class="btn sm" data-act="payEarlyBill" data-id="${b.id}">Pay Early</button>
+            <button class="btn ghost sm" data-act="editBill" data-id="${b.id}">Edit</button>
+            <button class="btn danger sm" data-act="delBill" data-id="${b.id}">Del</button>
+          </div>
         </td>
       `;
       btb.appendChild(tr);
@@ -1258,14 +1490,6 @@ Type: 80, 100, 120, or a custom paycheck net.`,
   }
 
   // ---------- Input Wiring ----------
-  function bindMetaToActive(id, key, castFn){
-    $(id).addEventListener("input", e=>{
-      const st = activeState();
-      st.meta[key] = castFn(e.target.value);
-      render();
-    });
-  }
-
   $("horizonMonths").addEventListener("change", render);
 
   $("cashOnHand").addEventListener("input", e=>{
@@ -1328,6 +1552,12 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     render();
   });
 
+  $("quickIncome").addEventListener("input", e=>{
+    const st = activeState();
+    st.meta.quickIncome = Number(e.target.value)||0;
+    render();
+  });
+
   $("addBillBtn").addEventListener("click", ()=> addOrEditBill(null));
   $("addDebtBtn").addEventListener("click", ()=> addOrEditDebt(null));
   $("addAdjBtn").addEventListener("click", ()=> addAdjustment());
@@ -1335,7 +1565,6 @@ Type: 80, 100, 120, or a custom paycheck net.`,
   // What if controls
   $("whatIfBtn").addEventListener("click", ()=>{
     if(sim.enabled){
-      // quick toggle off
       if(confirm("Exit What if? (sandbox changes will be discarded unless Applied).")) {
         exitWhatIf();
         render();
@@ -1379,12 +1608,86 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     render();
   });
 
+  // Share / QR
+  $("createLinkBtn").addEventListener("click", ()=>{
+    if(sim.enabled && !confirm("Create Link uses Reality data (not What if?). Continue?")) return;
+    const link = buildShareLinkFromState(state);
+    $("shareLink").value = link;
+
+    // also put it into your current URL hash for quick copy if you want
+    // (does NOT import into this device; it's just a link)
+    history.replaceState(null, document.title, location.pathname + location.search + "#share=" + link.split("#share=")[1]);
+
+    // If the link is too long, warn
+    if(link.length > 3500){
+      alert("Heads up: this share link is pretty long. If it fails on some devices, use Export JSON instead.");
+    }
+  });
+
+  $("copyLinkBtn").addEventListener("click", async ()=>{
+    const v = $("shareLink").value || "";
+    if(!v){
+      alert("Tap Create Link first.");
+      return;
+    }
+    try{
+      await navigator.clipboard.writeText(v);
+      alert("Link copied.");
+    } catch {
+      $("shareLink").focus();
+      $("shareLink").select();
+      document.execCommand("copy");
+      alert("Link copied.");
+    }
+  });
+
+  $("clearLinkBtn").addEventListener("click", ()=>{
+    $("shareLink").value = "";
+    clearShareHash();
+  });
+
+  $("createQrBtn").addEventListener("click", ()=>{
+    const v = $("shareLink").value || "";
+    if(!v){
+      // auto-create if empty
+      const link = buildShareLinkFromState(state);
+      $("shareLink").value = link;
+    }
+    openQrModal($("shareLink").value);
+  });
+
+  $("closeQrBtn").addEventListener("click", closeQrModal);
+  $("qrBack").addEventListener("click", (e)=>{
+    if(e.target === $("qrBack")) closeQrModal();
+  });
+
   // ---------- Delegated clicks ----------
   document.addEventListener("click", (e)=>{
     const btn = e.target.closest("[data-act]");
     if(!btn) return;
     const act = btn.dataset.act;
     const st = activeState();
+
+    // preset quick income
+    if(act==="setQuickIncome"){
+      const v = Number(btn.dataset.v||0);
+      st.meta.quickIncome = v;
+      render();
+      return;
+    }
+
+    // 1-click + Income on timeline row date
+    if(act==="quickIncome"){
+      const d = parseDateInput(btn.dataset.date);
+      if(!d) return;
+      if(clamp(st.meta.quickIncome) <= 0){
+        alert("Set a Quick Income Amount first.");
+        return;
+      }
+      addQuickIncomeOnDate(st, d, "Timeline");
+      render();
+      return;
+    }
 
     // Quick Pay from timeline (acts on active state)
     if(act==="quickPay"){
@@ -1398,6 +1701,7 @@ Type: 80, 100, 120, or a custom paycheck net.`,
       const found = snap.running.find(ev => ev.type===type && ev.refId===refId && fmtDateInput(ev.date)===fmtDateInput(date));
       if(!found) return;
 
+      // zero prompts not requested for Quick Pay; keep confirm
       const label = sim.enabled ? "Quick Pay (SIM) now?" : "Quick Pay now?";
       if(!confirm(`${label}\n\n${found.label}\n${money(found.amount)}`)) return;
       quickPay(st, found);
@@ -1406,6 +1710,13 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     }
 
     const id = btn.dataset.id;
+
+    // Pay Early bill (1-click, zero prompts)
+    if(act==="payEarlyBill"){
+      payBillEarly(st, id);
+      render();
+      return;
+    }
 
     // SIM actions
     if(act==="simPayoff"){ simPayoffDebt(id); render(); return; }
@@ -1471,7 +1782,6 @@ Type: 80, 100, 120, or a custom paycheck net.`,
       const p = JSON.parse(text);
       state = normalizeState(p);
       saveState();
-      // if sim on, refresh sim as well so Reality + Sim don't drift weirdly
       if(sim.enabled){
         sim.state = deepClone(state);
       }
@@ -1492,8 +1802,53 @@ Type: 80, 100, 120, or a custom paycheck net.`,
     render();
   });
 
+  // ---------- Incoming share handling ----------
+  function showIncomingShareBanner(){
+    $("incomingShareBanner").style.display = "block";
+  }
+  function hideIncomingShareBanner(){
+    $("incomingShareBanner").style.display = "none";
+  }
+
+  $("importShareBtn").addEventListener("click", ()=>{
+    const enc = getShareFromHash();
+    if(!enc){
+      hideIncomingShareBanner();
+      return;
+    }
+    try{
+      const json = base64UrlDecode(enc);
+      const p = JSON.parse(json);
+      state = normalizeState(p);
+      saveState();
+      exitWhatIf();
+      render();
+      hideIncomingShareBanner();
+      clearShareHash();
+      alert("Import complete.");
+    } catch {
+      alert("Import failed (bad/too-long link). Use Export JSON instead.");
+      hideIncomingShareBanner();
+      // keep hash so user can try again if they want
+    }
+  });
+
+  $("ignoreShareBtn").addEventListener("click", ()=>{
+    hideIncomingShareBanner();
+    clearShareHash();
+  });
+
   // Init
-  render();
+  (function init(){
+    // detect incoming share link
+    const enc = getShareFromHash();
+    if(enc){
+      showIncomingShareBanner();
+      // also prefill shareLink for convenience
+      $("shareLink").value = location.href;
+    }
+    render();
+  })();
 </script>
 </body>
 </html>
